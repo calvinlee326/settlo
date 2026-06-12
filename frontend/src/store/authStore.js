@@ -29,4 +29,7 @@ const useAuthStore = create(
   )
 );
 
+export const useIsAuthenticated = () =>
+  useAuthStore((s) => Boolean(s.accessToken || s.refreshToken));
+
 export default useAuthStore;

@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
-import useAuthStore from '../store/authStore';
+import useAuthStore, { useIsAuthenticated } from '../store/authStore';
 import Button from '../components/Button';
 import ErrorMessage from '../components/ErrorMessage';
 import OtpInput from '../components/OtpInput';
@@ -9,21 +9,18 @@ import OtpInput from '../components/OtpInput';
 export default function VerifyPage() {
   const [code, setCode] = useState('');
   const [username, setUsername] = useState('');
-  const [needsUsername, setNeedsUsername] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const setAuth = useAuthStore((s) => s.setAuth);
   const setUser = useAuthStore((s) => s.setUser);
-  const accessToken = useAuthStore((s) => s.accessToken);
-  const refreshToken = useAuthStore((s) => s.refreshToken);
-  const isAuthenticated = Boolean(accessToken || refreshToken);
+  const user = useAuthStore((s) => s.user);
+  const isAuthenticated = useIsAuthenticated();
+  // Derived from the persisted user so a reload mid-onboarding keeps the
+  // username step instead of bouncing a half-onboarded user to home.
+  const needsUsername = isAuthenticated && user && !user.username;
 
   const phone = sessionStorage.getItem('settlo-phone');
-
-  useEffect(() => {
-    if (!phone && !isAuthenticated) navigate('/login', { replace: true });
-  }, [phone, isAuthenticated, navigate]);
 
   const handleVerify = async (event) => {
     event.preventDefault();
@@ -43,9 +40,7 @@ export default function VerifyPage() {
         accessToken: data.access_token,
         refreshToken: data.refresh_token,
       });
-      if (data.is_new_user) {
-        setNeedsUsername(true);
-      } else {
+      if (!data.is_new_user) {
         sessionStorage.removeItem('settlo-phone');
         navigate('/', { replace: true });
       }
@@ -80,6 +75,10 @@ export default function VerifyPage() {
 
   if (isAuthenticated && !needsUsername) {
     return <Navigate to="/" replace />;
+  }
+
+  if (!phone && !isAuthenticated) {
+    return <Navigate to="/login" replace />;
   }
 
   return (

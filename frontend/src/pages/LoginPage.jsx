@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
-import useAuthStore from '../store/authStore';
+import { useIsAuthenticated } from '../store/authStore';
 import Button from '../components/Button';
 import ErrorMessage from '../components/ErrorMessage';
 
@@ -10,10 +10,9 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const accessToken = useAuthStore((s) => s.accessToken);
-  const refreshToken = useAuthStore((s) => s.refreshToken);
+  const isAuthenticated = useIsAuthenticated();
 
-  if (accessToken || refreshToken) {
+  if (isAuthenticated) {
     return <Navigate to="/" replace />;
   }
 
