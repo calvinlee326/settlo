@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.config import settings
@@ -46,9 +47,40 @@ def _member_out(membership: Membership) -> MemberOut:
     return MemberOut(
         id=membership.user.id,
         username=membership.user.username,
-        phone_number=membership.user.phone_number,
         joined_at=membership.joined_at,
     )
+
+
+def _member_has_financial_activity(db: Session, group_id: str, user_id: str) -> bool:
+    expense = (
+        db.query(Expense.id)
+        .filter(
+            Expense.group_id == group_id,
+            or_(Expense.paid_by == user_id, Expense.created_by == user_id),
+        )
+        .first()
+    )
+    if expense:
+        return True
+
+    split = (
+        db.query(ExpenseSplit.id)
+        .join(Expense, Expense.id == ExpenseSplit.expense_id)
+        .filter(Expense.group_id == group_id, ExpenseSplit.user_id == user_id)
+        .first()
+    )
+    if split:
+        return True
+
+    settlement = (
+        db.query(Settlement.id)
+        .filter(
+            Settlement.group_id == group_id,
+            or_(Settlement.from_user == user_id, Settlement.to_user == user_id),
+        )
+        .first()
+    )
+    return settlement is not None
 
 
 @router.post("/", response_model=GroupDetail, status_code=status.HTTP_201_CREATED)
@@ -270,6 +302,11 @@ def remove_member(
     if membership is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Member not found"
+        )
+    if _member_has_financial_activity(db, group_id, user_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot remove a member with existing expenses or settlements",
         )
     db.delete(membership)
     db.commit()

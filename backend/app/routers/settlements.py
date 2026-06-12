@@ -1,6 +1,7 @@
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
+from hashlib import sha256
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -16,6 +17,13 @@ from app.services.settlement import calculate_settlements
 
 router = APIRouter(prefix="/api/groups/{group_id}/settlements", tags=["settlements"])
 
+CENT = Decimal("0.01")
+DRAFT_SETTLEMENT_PREFIX = "draft_"
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
 
 def _settlement_out(s: Settlement, usernames: dict[str, str | None]) -> SettlementOut:
     return SettlementOut(
@@ -29,6 +37,36 @@ def _settlement_out(s: Settlement, usernames: dict[str, str | None]) -> Settleme
         is_paid=s.is_paid,
         paid_at=s.paid_at,
         created_at=s.created_at,
+    )
+
+
+def _draft_settlement_id(
+    group_id: str, from_user: str, to_user: str, amount: Decimal
+) -> str:
+    amount_key = str(amount.quantize(CENT))
+    digest = sha256(f"{group_id}:{from_user}:{to_user}:{amount_key}".encode()).hexdigest()
+    return f"{DRAFT_SETTLEMENT_PREFIX}{digest[:32]}"
+
+
+def _transaction_out(
+    group_id: str, transaction: dict, usernames: dict[str, str | None]
+) -> SettlementOut:
+    return SettlementOut(
+        id=_draft_settlement_id(
+            group_id,
+            transaction["from_user"],
+            transaction["to_user"],
+            transaction["amount"],
+        ),
+        group_id=group_id,
+        from_user=transaction["from_user"],
+        from_username=usernames.get(transaction["from_user"]),
+        to_user=transaction["to_user"],
+        to_username=usernames.get(transaction["to_user"]),
+        amount=float(transaction["amount"]),
+        is_paid=False,
+        paid_at=None,
+        created_at=_utcnow(),
     )
 
 
@@ -77,25 +115,6 @@ def get_settlements(
     balances = _compute_balances(db, group_id)
     transactions = calculate_settlements(balances)
 
-    # Replace stale unpaid settlements with the freshly computed plan
-    db.query(Settlement).filter(
-        Settlement.group_id == group_id, Settlement.is_paid.is_(False)
-    ).delete(synchronize_session=False)
-
-    settlements = []
-    for t in transactions:
-        s = Settlement(
-            group_id=group_id,
-            from_user=t["from_user"],
-            to_user=t["to_user"],
-            amount=t["amount"],
-        )
-        db.add(s)
-        settlements.append(s)
-    db.commit()
-    for s in settlements:
-        db.refresh(s)
-
     paid_settlements = (
         db.query(Settlement)
         .filter(Settlement.group_id == group_id, Settlement.is_paid.is_(True))
@@ -104,7 +123,9 @@ def get_settlements(
     )
 
     user_ids = set(balances.keys())
-    for s in settlements + paid_settlements:
+    for t in transactions:
+        user_ids.update([t["from_user"], t["to_user"]])
+    for s in paid_settlements:
         user_ids.update([s.from_user, s.to_user])
     users = db.query(User).filter(User.id.in_(user_ids)).all() if user_ids else []
     usernames = {u.id: u.username for u in users}
@@ -118,7 +139,7 @@ def get_settlements(
                 balances.items(), key=lambda kv: kv[1], reverse=True
             )
         ],
-        settlements=[_settlement_out(s, usernames) for s in settlements],
+        settlements=[_transaction_out(group_id, t, usernames) for t in transactions],
         paid_settlements=[_settlement_out(s, usernames) for s in paid_settlements],
     )
 
@@ -139,10 +160,30 @@ def mark_paid(
         .first()
     )
     if settlement is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Settlement not found"
+        balances = _compute_balances(db, group_id)
+        transaction = next(
+            (
+                t
+                for t in calculate_settlements(balances)
+                if _draft_settlement_id(
+                    group_id, t["from_user"], t["to_user"], t["amount"]
+                )
+                == settlement_id
+            ),
+            None,
         )
-    if settlement.is_paid:
+        if transaction is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Settlement not found"
+            )
+        settlement = Settlement(
+            group_id=group_id,
+            from_user=transaction["from_user"],
+            to_user=transaction["to_user"],
+            amount=transaction["amount"],
+        )
+        db.add(settlement)
+    elif settlement.is_paid:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Settlement is already paid",
@@ -154,7 +195,7 @@ def mark_paid(
         )
 
     settlement.is_paid = True
-    settlement.paid_at = datetime.utcnow()
+    settlement.paid_at = _utcnow()
     db.commit()
     db.refresh(settlement)
 

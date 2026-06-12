@@ -2,9 +2,6 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.schemas.user import UserOut
-
-
 class GroupCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     description: str | None = Field(default=None, max_length=255)
@@ -15,7 +12,6 @@ class MemberOut(BaseModel):
 
     id: str
     username: str | None
-    phone_number: str
     joined_at: datetime
 
 

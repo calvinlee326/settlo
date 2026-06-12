@@ -5,7 +5,7 @@ from sqlalchemy import DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
-from app.models.user import generate_uuid
+from app.models.user import generate_uuid, utcnow
 
 
 def generate_invite_token() -> str:
@@ -23,7 +23,7 @@ class Group(Base):
     )
     max_members: Mapped[int] = mapped_column(Integer, default=20)
     created_by: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
     memberships: Mapped[list["Membership"]] = relationship(
         back_populates="group", cascade="all, delete-orphan"
@@ -37,7 +37,7 @@ class Membership(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
     group_id: Mapped[str] = mapped_column(String(36), ForeignKey("groups.id"))
-    joined_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    joined_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
     group: Mapped["Group"] = relationship(back_populates="memberships")
     user = relationship("User")

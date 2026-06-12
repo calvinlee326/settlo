@@ -1,6 +1,9 @@
 import logging
 import secrets
-from datetime import datetime, timedelta
+import urllib.error
+import urllib.request
+from datetime import datetime, timedelta, timezone
+from json import dumps
 
 from sqlalchemy.orm import Session
 
@@ -22,8 +25,16 @@ class OTPInvalidError(OTPError):
     pass
 
 
+class OTPDeliveryError(OTPError):
+    pass
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
 def _is_locked(db: Session, phone_number: str) -> bool:
-    now = datetime.utcnow()
+    now = _utcnow()
     locked = (
         db.query(OTPCode)
         .filter(
@@ -36,32 +47,73 @@ def _is_locked(db: Session, phone_number: str) -> bool:
     return locked is not None
 
 
+def _is_send_limited(db: Session, phone_number: str) -> bool:
+    now = _utcnow()
+    sent_count = (
+        db.query(OTPCode)
+        .filter(
+            OTPCode.phone_number == phone_number,
+            OTPCode.created_at >= now - timedelta(minutes=settings.OTP_SEND_WINDOW_MINUTES),
+        )
+        .count()
+    )
+    return sent_count >= settings.OTP_SEND_LIMIT
+
+
+def _deliver_otp(phone_number: str, code: str) -> None:
+    url = (settings.OTP_DELIVERY_WEBHOOK_URL or "").strip()
+    if not url:
+        raise OTPDeliveryError("OTP delivery is not configured")
+
+    payload = dumps({"phone_number": phone_number, "code": code}).encode("utf-8")
+    request = urllib.request.Request(
+        url,
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(
+            request, timeout=settings.OTP_DELIVERY_TIMEOUT_SECONDS
+        ) as response:
+            if response.status >= 400:
+                raise OTPDeliveryError("OTP delivery failed")
+    except (TimeoutError, urllib.error.URLError) as exc:
+        raise OTPDeliveryError("OTP delivery failed") from exc
+
+
 def generate_otp(db: Session, phone_number: str) -> OTPCode:
     if _is_locked(db, phone_number):
         raise OTPLockedError(
             "Too many failed attempts. Try again in 10 minutes."
         )
-
-    # Invalidate previous unused codes for this phone number
-    db.query(OTPCode).filter(
-        OTPCode.phone_number == phone_number, OTPCode.is_used.is_(False)
-    ).update({OTPCode.is_used: True})
+    if _is_send_limited(db, phone_number):
+        raise OTPLockedError(
+            "Too many verification codes requested. Try again later."
+        )
 
     code = f"{secrets.randbelow(1000000):06d}"
-    now = datetime.utcnow()
+    now = _utcnow()
     otp = OTPCode(
         phone_number=phone_number,
         code=code,
         expired_at=now + timedelta(minutes=settings.OTP_EXPIRE_MINUTES),
         created_at=now,
     )
-    db.add(otp)
-    db.commit()
 
-    # Development only: print OTP to terminal instead of sending SMS
-    message = f"[Settlo OTP] phone={phone_number} code={code} (expires in {settings.OTP_EXPIRE_MINUTES} min)"
-    logger.info(message)
-    print(message, flush=True)
+    try:
+        db.query(OTPCode).filter(
+            OTPCode.phone_number == phone_number, OTPCode.is_used.is_(False)
+        ).update({OTPCode.is_used: True})
+        db.add(otp)
+        db.flush()
+        _deliver_otp(phone_number, code)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+    logger.info("OTP sent for phone ending in %s", phone_number[-4:])
     return otp
 
 
@@ -71,7 +123,7 @@ def verify_otp(db: Session, phone_number: str, code: str) -> None:
             "Too many failed attempts. Try again in 10 minutes."
         )
 
-    now = datetime.utcnow()
+    now = _utcnow()
     otp = (
         db.query(OTPCode)
         .filter(

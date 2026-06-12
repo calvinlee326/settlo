@@ -114,11 +114,9 @@ export default function GroupDetailPage() {
         <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-1">
           {group.members.map((member) => (
             <div key={member.id} className="flex flex-col items-center gap-1">
-              <Avatar name={member.username || member.phone_number} size="sm" />
+              <Avatar name={member.username || 'Member'} size="sm" />
               <span className="max-w-[3.5rem] truncate text-[10px] text-white/50">
-                {member.id === user?.id
-                  ? 'You'
-                  : member.username || member.phone_number}
+                {member.id === user?.id ? 'You' : member.username || 'Member'}
               </span>
             </div>
           ))}

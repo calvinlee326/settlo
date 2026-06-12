@@ -1,25 +1,22 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 
-const useAuthStore = create(
-  persist(
-    (set) => ({
-      user: null,
-      accessToken: null,
-      refreshToken: null,
+if (typeof window !== 'undefined') {
+  window.localStorage.removeItem('settlo-auth');
+}
 
-      setAuth: ({ user, accessToken, refreshToken }) =>
-        set({ user, accessToken, refreshToken }),
+const useAuthStore = create((set) => ({
+  user: null,
+  accessToken: null,
+  refreshToken: null,
 
-      setUser: (user) => set({ user }),
+  setAuth: ({ user, accessToken, refreshToken }) =>
+    set({ user, accessToken, refreshToken }),
 
-      setAccessToken: (accessToken) => set({ accessToken }),
+  setUser: (user) => set({ user }),
 
-      clearAuth: () =>
-        set({ user: null, accessToken: null, refreshToken: null }),
-    }),
-    { name: 'settlo-auth' }
-  )
-);
+  setAccessToken: (accessToken) => set({ accessToken }),
+
+  clearAuth: () => set({ user: null, accessToken: null, refreshToken: null }),
+}));
 
 export default useAuthStore;

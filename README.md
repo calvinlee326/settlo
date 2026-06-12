@@ -16,7 +16,7 @@ cd backend
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env   # then change SECRET_KEY
+cp .env.example .env   # then set SECRET_KEY and OTP_DELIVERY_WEBHOOK_URL
 uvicorn app.main:app --reload
 ```
 
@@ -49,11 +49,11 @@ docker compose up
 Phone-number login with OTP — no passwords.
 
 1. Enter your phone number on `/login`.
-2. A 6-digit OTP is **printed to the backend terminal** (no SMS in development).
+2. A 6-digit OTP is delivered through the configured `OTP_DELIVERY_WEBHOOK_URL`.
 3. Enter the code on `/verify`. First-time numbers get an account automatically and are asked for a display name.
 4. The app receives a 30-minute access token and a 7-day refresh token; refresh is automatic.
 
-Security: OTP expires in 10 minutes, verification locks for 10 minutes after 5 failed attempts, logout blacklists tokens.
+Security: OTP expires in 10 minutes, verification locks for 10 minutes after 5 failed attempts, OTP sends are rate-limited, logout blacklists tokens, and tokens are not persisted in browser storage.
 
 ## Settlement Algorithm
 

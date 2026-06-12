@@ -6,7 +6,7 @@ from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
-from app.models.user import generate_uuid
+from app.models.user import generate_uuid, utcnow
 
 
 class SplitType(str, enum.Enum):
@@ -26,7 +26,7 @@ class Expense(Base):
     split_type: Mapped[SplitType] = mapped_column(
         Enum(SplitType, name="splittype"), default=SplitType.EQUAL
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     created_by: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
 
     splits: Mapped[list["ExpenseSplit"]] = relationship(
@@ -57,7 +57,7 @@ class Settlement(Base):
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     is_paid: Mapped[bool] = mapped_column(Boolean, default=False)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
     from_user_obj = relationship("User", foreign_keys=[from_user])
     to_user_obj = relationship("User", foreign_keys=[to_user])

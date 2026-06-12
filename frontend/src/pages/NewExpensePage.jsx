@@ -136,8 +136,8 @@ export default function NewExpensePage() {
             {members.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.id === user?.id
-                  ? `${m.username || m.phone_number} (you)`
-                  : m.username || m.phone_number}
+                  ? `${m.username || 'Member'} (you)`
+                  : m.username || 'Member'}
               </option>
             ))}
           </select>
@@ -170,7 +170,7 @@ export default function NewExpensePage() {
             {members.map((m) => (
               <div key={m.id} className="flex items-center gap-3">
                 <span className="flex-1 truncate text-[15px] text-white/75">
-                  {m.id === user?.id ? 'You' : m.username || m.phone_number}
+                  {m.id === user?.id ? 'You' : m.username || 'Member'}
                 </span>
                 <div className="relative w-28">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-white/35">
