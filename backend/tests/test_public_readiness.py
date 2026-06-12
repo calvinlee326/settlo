@@ -1,8 +1,10 @@
 import os
 import sys
 import unittest
+import importlib
 from decimal import Decimal
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 os.environ.setdefault("SECRET_KEY", "test-secret-key-for-public-readiness")
@@ -12,9 +14,10 @@ from fastapi import HTTPException
 from pydantic import ValidationError
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.sql.schema import MetaData
 
 from app.core.config import Settings
-from app.database import Base
+from app.database import Base, database_url_for_sqlalchemy
 from app.models import *  # noqa: F401,F403
 from app.models.expense import Expense, ExpenseSplit, Settlement, SplitType
 from app.models.group import Group, Membership
@@ -149,13 +152,61 @@ class PublicReadinessTest(unittest.TestCase):
             with self.assertRaises(ValidationError):
                 Settings(_env_file=None)
 
+    def test_backend_has_postgres_and_twilio_dependencies(self):
+        requirements = Path(__file__).resolve().parents[1] / "requirements.txt"
+        text = requirements.read_text()
+
+        self.assertIn("psycopg[binary]", text)
+        self.assertIn("twilio", text)
+
+    def test_plain_postgres_database_url_uses_psycopg_driver(self):
+        self.assertEqual(
+            database_url_for_sqlalchemy("postgresql://user:pass@host:5432/db"),
+            "postgresql+psycopg://user:pass@host:5432/db",
+        )
+        self.assertEqual(
+            database_url_for_sqlalchemy("postgres://user:pass@host:5432/db"),
+            "postgresql+psycopg://user:pass@host:5432/db",
+        )
+
+    def test_app_import_does_not_create_tables(self):
+        existing = sys.modules.pop("app.main", None)
+        try:
+            with patch.object(
+                MetaData, "create_all", side_effect=AssertionError("create_all called")
+            ):
+                importlib.import_module("app.main")
+        finally:
+            sys.modules.pop("app.main", None)
+            if existing is not None:
+                sys.modules["app.main"] = existing
+
+    def test_local_otp_catcher_is_not_shipped(self):
+        catcher = Path(__file__).resolve().parents[1] / "otp_catcher.py"
+
+        self.assertFalse(catcher.exists())
+
     def test_generate_otp_is_rate_limited_and_does_not_print_code(self):
         phone_number = "+15550000003"
+
+        class Verifications:
+            def __init__(self):
+                self.calls = []
+
+            def create(self, **kwargs):
+                self.calls.append(kwargs)
+                return SimpleNamespace(status="pending")
+
+        class VerifyService:
+            def __init__(self):
+                self.verifications = Verifications()
+
+        service = VerifyService()
 
         with (
             patch.object(otp_service.settings, "OTP_SEND_LIMIT", 2),
             patch.object(otp_service.settings, "OTP_SEND_WINDOW_MINUTES", 10),
-            patch.object(otp_service, "_deliver_otp", return_value=None),
+            patch.object(otp_service, "_twilio_verify_service", return_value=service),
             patch("builtins.print") as print_mock,
         ):
             otp_service.generate_otp(self.db, phone_number)
@@ -167,7 +218,128 @@ class PublicReadinessTest(unittest.TestCase):
             self.db.query(OTPCode).filter(OTPCode.phone_number == phone_number).count(),
             2,
         )
+        self.assertEqual(len(service.verifications.calls), 2)
         print_mock.assert_not_called()
+
+    def test_generate_otp_uses_twilio_verify(self):
+        phone_number = "+15550000005"
+
+        class Verifications:
+            def __init__(self):
+                self.calls = []
+
+            def create(self, **kwargs):
+                self.calls.append(kwargs)
+                return SimpleNamespace(status="pending")
+
+        class VerifyService:
+            def __init__(self):
+                self.verifications = Verifications()
+
+        service = VerifyService()
+
+        with (
+            patch.object(
+                otp_service, "_twilio_verify_service", return_value=service, create=True
+            ),
+        ):
+            otp_service.generate_otp(self.db, phone_number)
+
+        self.assertEqual(
+            service.verifications.calls, [{"to": phone_number, "channel": "sms"}]
+        )
+        saved = (
+            self.db.query(OTPCode)
+            .filter(OTPCode.phone_number == phone_number)
+            .one()
+        )
+        self.assertEqual(saved.code, "twilio")
+
+    def test_verify_otp_uses_twilio_verify(self):
+        phone_number = "+15550000006"
+
+        class VerificationChecks:
+            def __init__(self):
+                self.calls = []
+
+            def create(self, **kwargs):
+                self.calls.append(kwargs)
+                return SimpleNamespace(status="approved")
+
+        class VerifyService:
+            def __init__(self):
+                self.verification_checks = VerificationChecks()
+
+        service = VerifyService()
+
+        with patch.object(
+            otp_service, "_twilio_verify_service", return_value=service, create=True
+        ):
+            rejected = False
+            try:
+                otp_service.verify_otp(self.db, phone_number, "123456")
+            except otp_service.OTPInvalidError:
+                rejected = True
+
+        self.assertFalse(rejected)
+        self.assertEqual(
+            service.verification_checks.calls,
+            [{"to": phone_number, "code": "123456"}],
+        )
+
+    def test_verify_otp_rejects_unapproved_twilio_status(self):
+        phone_number = "+15550000007"
+
+        class VerificationChecks:
+            def __init__(self):
+                self.calls = []
+
+            def create(self, **kwargs):
+                self.calls.append(kwargs)
+                return SimpleNamespace(status="pending")
+
+        class VerifyService:
+            def __init__(self):
+                self.verification_checks = VerificationChecks()
+
+        service = VerifyService()
+
+        with (
+            patch.object(
+                otp_service, "_twilio_verify_service", return_value=service, create=True
+            ),
+            self.assertRaises(otp_service.OTPInvalidError),
+        ):
+            otp_service.verify_otp(self.db, phone_number, "123456")
+
+        self.assertEqual(
+            service.verification_checks.calls,
+            [{"to": phone_number, "code": "123456"}],
+        )
+
+    def test_verify_otp_treats_missing_twilio_challenge_as_invalid(self):
+        phone_number = "+15550000008"
+
+        class TwilioNotFoundError(Exception):
+            status = 404
+
+        class VerificationChecks:
+            def create(self, **kwargs):
+                raise TwilioNotFoundError()
+
+        class VerifyService:
+            verification_checks = VerificationChecks()
+
+        with (
+            patch.object(
+                otp_service, "_twilio_verify_service", return_value=VerifyService()
+            ),
+            patch.object(
+                otp_service, "_twilio_error_types", return_value=(TwilioNotFoundError,)
+            ),
+            self.assertRaises(otp_service.OTPInvalidError),
+        ):
+            otp_service.verify_otp(self.db, phone_number, "123456")
 
     def test_send_otp_is_rate_limited_by_ip(self):
         class Client:

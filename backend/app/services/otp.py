@@ -1,9 +1,5 @@
 import logging
-import secrets
-import urllib.error
-import urllib.request
 from datetime import datetime, timedelta, timezone
-from json import dumps
 
 from sqlalchemy.orm import Session
 
@@ -11,6 +7,7 @@ from app.core.config import settings
 from app.models.user import OTPCode
 
 logger = logging.getLogger("settlo.otp")
+TWILIO_OTP_MARKER = "twilio"
 
 
 class OTPError(Exception):
@@ -33,20 +30,6 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
-def _is_locked(db: Session, phone_number: str) -> bool:
-    now = _utcnow()
-    locked = (
-        db.query(OTPCode)
-        .filter(
-            OTPCode.phone_number == phone_number,
-            OTPCode.failed_attempts >= settings.OTP_MAX_ATTEMPTS,
-            OTPCode.created_at >= now - timedelta(minutes=settings.OTP_EXPIRE_MINUTES),
-        )
-        .first()
-    )
-    return locked is not None
-
-
 def _is_send_limited(db: Session, phone_number: str) -> bool:
     now = _utcnow()
     sent_count = (
@@ -60,54 +43,80 @@ def _is_send_limited(db: Session, phone_number: str) -> bool:
     return sent_count >= settings.OTP_SEND_LIMIT
 
 
-def _deliver_otp(phone_number: str, code: str) -> None:
-    url = (settings.OTP_DELIVERY_WEBHOOK_URL or "").strip()
-    if not url:
-        raise OTPDeliveryError("OTP delivery is not configured")
+def _twilio_verify_service():
+    if not (
+        settings.TWILIO_ACCOUNT_SID
+        and settings.TWILIO_AUTH_TOKEN
+        and settings.TWILIO_VERIFY_SERVICE_SID
+    ):
+        raise OTPDeliveryError("Twilio Verify is not configured")
 
-    payload = dumps({"phone_number": phone_number, "code": code}).encode("utf-8")
-    request = urllib.request.Request(
-        url,
-        data=payload,
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
     try:
-        with urllib.request.urlopen(
-            request, timeout=settings.OTP_DELIVERY_TIMEOUT_SECONDS
-        ) as response:
-            if response.status >= 400:
-                raise OTPDeliveryError("OTP delivery failed")
-    except (TimeoutError, urllib.error.URLError) as exc:
+        from twilio.rest import Client
+    except ImportError as exc:
+        raise OTPDeliveryError("Twilio Verify dependency is not installed") from exc
+
+    return Client(
+        settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN
+    ).verify.v2.services(settings.TWILIO_VERIFY_SERVICE_SID)
+
+
+def _twilio_error_types():
+    try:
+        from twilio.base.exceptions import TwilioRestException
+    except ImportError:
+        return ()
+
+    return (TwilioRestException,)
+
+
+def _start_twilio_verification(phone_number: str) -> None:
+    try:
+        _twilio_verify_service().verifications.create(
+            to=phone_number, channel=settings.TWILIO_VERIFY_CHANNEL
+        )
+    except OTPDeliveryError:
+        raise
+    except _twilio_error_types() as exc:
         raise OTPDeliveryError("OTP delivery failed") from exc
 
 
-def generate_otp(db: Session, phone_number: str) -> OTPCode:
-    if _is_locked(db, phone_number):
-        raise OTPLockedError(
-            "Too many failed attempts. Try again in 10 minutes."
+def _check_twilio_verification(phone_number: str, code: str) -> str:
+    try:
+        check = _twilio_verify_service().verification_checks.create(
+            to=phone_number, code=code
         )
+    except OTPDeliveryError:
+        raise
+    except _twilio_error_types() as exc:
+        if getattr(exc, "status", None) == 404:
+            raise OTPInvalidError(
+                "OTP not found or expired. Request a new code."
+            ) from exc
+        raise OTPDeliveryError("OTP verification failed") from exc
+
+    return check.status
+
+
+def generate_otp(db: Session, phone_number: str) -> OTPCode:
     if _is_send_limited(db, phone_number):
         raise OTPLockedError(
             "Too many verification codes requested. Try again later."
         )
 
-    code = f"{secrets.randbelow(1000000):06d}"
     now = _utcnow()
     otp = OTPCode(
         phone_number=phone_number,
-        code=code,
+        code=TWILIO_OTP_MARKER,
         expired_at=now + timedelta(minutes=settings.OTP_EXPIRE_MINUTES),
+        is_used=True,
         created_at=now,
     )
 
     try:
-        db.query(OTPCode).filter(
-            OTPCode.phone_number == phone_number, OTPCode.is_used.is_(False)
-        ).update({OTPCode.is_used: True})
         db.add(otp)
         db.flush()
-        _deliver_otp(phone_number, code)
+        _start_twilio_verification(phone_number)
         db.commit()
     except Exception:
         db.rollback()
@@ -118,33 +127,5 @@ def generate_otp(db: Session, phone_number: str) -> OTPCode:
 
 
 def verify_otp(db: Session, phone_number: str, code: str) -> None:
-    if _is_locked(db, phone_number):
-        raise OTPLockedError(
-            "Too many failed attempts. Try again in 10 minutes."
-        )
-
-    now = _utcnow()
-    otp = (
-        db.query(OTPCode)
-        .filter(
-            OTPCode.phone_number == phone_number,
-            OTPCode.is_used.is_(False),
-            OTPCode.expired_at > now,
-        )
-        .order_by(OTPCode.created_at.desc())
-        .first()
-    )
-    if otp is None:
-        raise OTPInvalidError("OTP not found or expired. Request a new code.")
-
-    if not secrets.compare_digest(otp.code, code):
-        otp.failed_attempts += 1
-        db.commit()
-        if otp.failed_attempts >= settings.OTP_MAX_ATTEMPTS:
-            raise OTPLockedError(
-                "Too many failed attempts. Try again in 10 minutes."
-            )
+    if _check_twilio_verification(phone_number, code) != "approved":
         raise OTPInvalidError("Invalid OTP code.")
-
-    otp.is_used = True
-    db.commit()
