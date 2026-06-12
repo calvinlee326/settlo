@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     OTP_EXPIRE_MINUTES: int = 10
     OTP_MAX_ATTEMPTS: int = 5
     FRONTEND_URL: str = "http://localhost:5173"
+    EXTRA_ORIGINS: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

@@ -16,7 +16,8 @@ export default function GroupDetailPage() {
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [inviteCopied, setInviteCopied] = useState(false);
+  const [inviteLink, setInviteLink] = useState('');
+  const [copied, setCopied] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -40,12 +41,25 @@ export default function GroupDetailPage() {
   const handleInvite = async () => {
     try {
       const { data } = await api.get(`/groups/${id}/invite`);
-      await navigator.clipboard.writeText(data.invite_link);
-      setInviteCopied(true);
-      setTimeout(() => setInviteCopied(false), 2000);
+      setInviteLink(`${window.location.origin}/invite/${data.invite_token}`);
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to get invite link');
     }
+  };
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+    } catch {
+      const el = document.createElement('textarea');
+      el.value = inviteLink;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleDeleteExpense = async (expenseId) => {
@@ -111,15 +125,10 @@ export default function GroupDetailPage() {
           <button
             onClick={handleInvite}
             className="flex h-8 w-8 shrink-0 items-center justify-center self-start rounded-full border-2 border-dashed border-white/25 text-white/40 transition-colors hover:border-violet-400/70 hover:text-violet-300"
-            aria-label="Copy invite link"
+            aria-label="Show invite link"
           >
             +
           </button>
-          {inviteCopied && (
-            <span className="text-xs font-medium text-emerald-400">
-              Invite link copied!
-            </span>
-          )}
         </div>
       </div>
 
@@ -165,6 +174,34 @@ export default function GroupDetailPage() {
       >
         +
       </Link>
+
+      {inviteLink && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="glass-strong w-full max-w-sm space-y-4 p-6">
+            <h2 className="text-[17px] font-semibold text-white">Invite Link</h2>
+            <input
+              readOnly
+              value={inviteLink}
+              className="w-full rounded-xl bg-white/10 px-3 py-2 text-[13px] text-white/80 outline-none"
+              onFocus={(e) => e.target.select()}
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={handleCopy}
+                className="flex-1 rounded-xl bg-violet-500 py-2 text-[14px] font-medium text-white transition-opacity hover:opacity-80"
+              >
+                {copied ? 'Copied!' : 'Copy'}
+              </button>
+              <button
+                onClick={() => { setInviteLink(''); setCopied(false); }}
+                className="flex-1 rounded-xl bg-white/10 py-2 text-[14px] font-medium text-white/70 transition-opacity hover:opacity-80"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

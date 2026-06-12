@@ -236,10 +236,7 @@ def get_invite(
 ):
     group = get_group_or_404(db, group_id)
     require_membership(db, group_id, current_user.id)
-    return InviteOut(
-        invite_token=group.invite_token,
-        invite_link=f"{settings.FRONTEND_URL}/invite/{group.invite_token}",
-    )
+    return InviteOut(invite_token=group.invite_token)
 
 
 @router.delete(

@@ -96,8 +96,15 @@ def get_settlements(
     for s in settlements:
         db.refresh(s)
 
+    paid_settlements = (
+        db.query(Settlement)
+        .filter(Settlement.group_id == group_id, Settlement.is_paid.is_(True))
+        .order_by(Settlement.paid_at.desc())
+        .all()
+    )
+
     user_ids = set(balances.keys())
-    for s in settlements:
+    for s in settlements + paid_settlements:
         user_ids.update([s.from_user, s.to_user])
     users = db.query(User).filter(User.id.in_(user_ids)).all() if user_ids else []
     usernames = {u.id: u.username for u in users}
@@ -112,6 +119,7 @@ def get_settlements(
             )
         ],
         settlements=[_settlement_out(s, usernames) for s in settlements],
+        paid_settlements=[_settlement_out(s, usernames) for s in paid_settlements],
     )
 
 

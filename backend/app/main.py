@@ -15,9 +15,13 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Settlo", version="1.0.0")
 
+_origins = [settings.FRONTEND_URL]
+if settings.EXTRA_ORIGINS:
+    _origins += [o.strip() for o in settings.EXTRA_ORIGINS.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL],
+    allow_origins=_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

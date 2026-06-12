@@ -37,7 +37,6 @@ class GroupDetail(GroupOut):
 
 class InviteOut(BaseModel):
     invite_token: str
-    invite_link: str
 
 
 class InvitePreview(BaseModel):

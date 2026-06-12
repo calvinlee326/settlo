@@ -9,6 +9,7 @@ export default function SettlementPage() {
   const { id } = useParams();
   const [balances, setBalances] = useState([]);
   const [settlements, setSettlements] = useState([]);
+  const [paidSettlements, setPaidSettlements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [payingId, setPayingId] = useState(null);
   const [error, setError] = useState('');
@@ -19,6 +20,7 @@ export default function SettlementPage() {
       const { data } = await api.get(`/groups/${id}/settlements/`);
       setBalances(data.balances);
       setSettlements(data.settlements);
+      setPaidSettlements(data.paid_settlements ?? []);
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to load settlements');
     } finally {
@@ -106,6 +108,23 @@ export default function SettlementPage() {
             />
           ))}
         </div>
+      )}
+
+      {paidSettlements.length > 0 && (
+        <>
+          <h2 className="text-lg font-medium text-white/90">Payment History</h2>
+          <div className="space-y-3">
+            {paidSettlements.map((settlement, i) => (
+              <SettlementItem
+                key={settlement.id}
+                settlement={settlement}
+                style={{ animationDelay: `${i * 50}ms` }}
+                paying={false}
+                onPay={null}
+              />
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

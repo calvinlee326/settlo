@@ -25,3 +25,4 @@ class BalanceOut(BaseModel):
 class SettlementResult(BaseModel):
     balances: list[BalanceOut]
     settlements: list[SettlementOut]
+    paid_settlements: list[SettlementOut] = []
