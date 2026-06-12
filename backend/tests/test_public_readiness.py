@@ -169,6 +169,12 @@ class PublicReadinessTest(unittest.TestCase):
             "postgresql+psycopg://user:pass@host:5432/db",
         )
 
+    def test_alembic_uses_same_database_url_driver(self):
+        alembic_env = Path(__file__).resolve().parents[1] / "alembic" / "env.py"
+        text = alembic_env.read_text()
+
+        self.assertIn("database_url_for_sqlalchemy(settings.DATABASE_URL)", text)
+
     def test_app_import_does_not_create_tables(self):
         existing = sys.modules.pop("app.main", None)
         try:
