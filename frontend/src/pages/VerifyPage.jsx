@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import useAuthStore from '../store/authStore';
 import Button from '../components/Button';
@@ -15,12 +15,15 @@ export default function VerifyPage() {
   const navigate = useNavigate();
   const setAuth = useAuthStore((s) => s.setAuth);
   const setUser = useAuthStore((s) => s.setUser);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const refreshToken = useAuthStore((s) => s.refreshToken);
+  const isAuthenticated = Boolean(accessToken || refreshToken);
 
   const phone = sessionStorage.getItem('settlo-phone');
 
   useEffect(() => {
-    if (!phone) navigate('/login');
-  }, [phone, navigate]);
+    if (!phone && !isAuthenticated) navigate('/login', { replace: true });
+  }, [phone, isAuthenticated, navigate]);
 
   const handleVerify = async (event) => {
     event.preventDefault();
@@ -44,7 +47,7 @@ export default function VerifyPage() {
         setNeedsUsername(true);
       } else {
         sessionStorage.removeItem('settlo-phone');
-        navigate('/');
+        navigate('/', { replace: true });
       }
     } catch (err) {
       setError(err.response?.data?.detail || 'Verification failed. Try again.');
@@ -67,13 +70,17 @@ export default function VerifyPage() {
       });
       setUser(data);
       sessionStorage.removeItem('settlo-phone');
-      navigate('/');
+      navigate('/', { replace: true });
     } catch (err) {
       setError(err.response?.data?.detail || 'Could not save your name.');
     } finally {
       setLoading(false);
     }
   };
+
+  if (isAuthenticated && !needsUsername) {
+    return <Navigate to="/" replace />;
+  }
 
   return (
     <div className="page-enter flex min-h-screen items-center justify-center px-4">
