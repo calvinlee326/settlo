@@ -13,11 +13,15 @@ export default function LoginPage() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
-    const normalized = phone.replace(/[\s-]/g, '');
-    if (!/^\+?[0-9]{7,15}$/.test(normalized)) {
-      setError('Enter a valid phone number, e.g. +1234567890');
+    let digits = phone.replace(/\D/g, '');
+    if (digits.length === 11 && digits.startsWith('1')) {
+      digits = digits.slice(1);
+    }
+    if (digits.length !== 10) {
+      setError('Enter a valid 10-digit US phone number');
       return;
     }
+    const normalized = `+1${digits}`;
     setLoading(true);
     try {
       await api.post('/auth/send-otp', { phone_number: normalized });
@@ -31,38 +35,43 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
-      <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-sm">
-        <h1 className="text-center text-3xl font-bold text-primary-600">
+    <div className="page-enter flex min-h-screen items-center justify-center px-4">
+      <div className="glass-strong w-full max-w-md p-8">
+        <h1 className="text-center text-[28px] font-semibold text-white">
           Settlo
         </h1>
-        <p className="mt-2 text-center text-sm text-slate-500">
+        <p className="mt-2 text-center text-[15px] text-white/55">
           Split bills with friends. Settle up in fewer payments.
         </p>
         <form onSubmit={handleSubmit} className="mt-8 space-y-4">
           <div>
             <label
               htmlFor="phone"
-              className="mb-1 block text-sm font-medium text-slate-700"
+              className="mb-1.5 block text-[13px] font-medium text-white/50"
             >
-              Phone number
+              Phone number (US)
             </label>
             <input
               id="phone"
               type="tel"
               autoComplete="tel"
-              placeholder="+1234567890"
+              placeholder="(909) 555-0101"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
+              className="input-glass"
             />
           </div>
           <ErrorMessage message={error} />
-          <Button type="submit" disabled={loading} className="w-full py-3">
+          <Button
+            type="submit"
+            variant="accent"
+            disabled={loading}
+            className="w-full"
+          >
             {loading ? 'Sending…' : 'Send verification code'}
           </Button>
         </form>
-        <p className="mt-4 text-center text-xs text-slate-400">
+        <p className="mt-4 text-center text-[13px] text-white/30">
           New here? An account is created automatically on first login.
         </p>
       </div>

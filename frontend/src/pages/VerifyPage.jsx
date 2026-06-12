@@ -76,39 +76,46 @@ export default function VerifyPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
-      <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-sm">
+    <div className="page-enter flex min-h-screen items-center justify-center px-4">
+      <div className="glass-strong w-full max-w-md p-8">
         {!needsUsername ? (
           <>
-            <h1 className="text-center text-2xl font-bold text-slate-900">
+            <h1 className="text-center text-[28px] font-semibold text-white">
               Enter verification code
             </h1>
-            <p className="mt-2 text-center text-sm text-slate-500">
+            <p className="mt-2 text-center text-[15px] text-white/55">
               We sent a 6-digit code to{' '}
-              <span className="font-medium text-slate-700">{phone}</span>.
+              <span className="font-medium text-white/90">{phone}</span>.
               <br />
-              (Dev mode: check the backend terminal.)
+              <span className="text-[13px] text-white/30">
+                (Dev mode: check the backend terminal.)
+              </span>
             </p>
             <form onSubmit={handleVerify} className="mt-8 space-y-4">
               <OtpInput value={code} onChange={setCode} />
               <ErrorMessage message={error} />
-              <Button type="submit" disabled={loading} className="w-full py-3">
+              <Button
+                type="submit"
+                variant="accent"
+                disabled={loading}
+                className="w-full"
+              >
                 {loading ? 'Verifying…' : 'Verify'}
               </Button>
             </form>
             <button
               onClick={() => navigate('/login')}
-              className="mt-4 w-full text-center text-sm text-primary-600 hover:underline"
+              className="mt-4 w-full text-center text-sm text-sky-400 transition-colors hover:text-sky-300"
             >
               Use a different number
             </button>
           </>
         ) : (
           <>
-            <h1 className="text-center text-2xl font-bold text-slate-900">
+            <h1 className="text-center text-[28px] font-semibold text-white">
               Welcome to Settlo!
             </h1>
-            <p className="mt-2 text-center text-sm text-slate-500">
+            <p className="mt-2 text-center text-[15px] text-white/55">
               What should your friends call you?
             </p>
             <form onSubmit={handleSetUsername} className="mt-8 space-y-4">
@@ -119,10 +126,15 @@ export default function VerifyPage() {
                 onChange={(e) => setUsername(e.target.value)}
                 maxLength={50}
                 autoFocus
-                className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
+                className="input-glass"
               />
               <ErrorMessage message={error} />
-              <Button type="submit" disabled={loading} className="w-full py-3">
+              <Button
+                type="submit"
+                variant="accent"
+                disabled={loading}
+                className="w-full"
+              >
                 {loading ? 'Saving…' : 'Continue'}
               </Button>
             </form>

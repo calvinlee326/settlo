@@ -40,15 +40,17 @@ export default function InvitePage() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
-        <p className="text-sm text-slate-500">You have been invited to join</p>
-        <h1 className="mt-2 text-2xl font-bold text-slate-900">
+      <div className="glass-strong p-8 text-center">
+        <p className="text-[15px] text-white/55">
+          You have been invited to join
+        </p>
+        <h1 className="mt-2 text-[28px] font-semibold text-white">
           {preview.name}
         </h1>
         {preview.description && (
-          <p className="mt-2 text-sm text-slate-500">{preview.description}</p>
+          <p className="mt-2 text-[15px] text-white/55">{preview.description}</p>
         )}
-        <p className="mt-4 text-xs text-slate-400">
+        <p className="mt-4 text-[13px] text-white/30">
           {preview.member_count} of {preview.max_members} members
           {preview.created_by_username &&
             ` · created by ${preview.created_by_username}`}
@@ -57,14 +59,15 @@ export default function InvitePage() {
         <div className="mt-6">
           {preview.is_member ? (
             <Button
-              className="w-full py-3"
+              className="w-full"
               onClick={() => navigate(`/groups/${preview.group_id}`)}
             >
               You are already a member — open group
             </Button>
           ) : (
             <Button
-              className="w-full py-3"
+              variant="accent"
+              className="w-full"
               onClick={handleJoin}
               disabled={joining}
             >

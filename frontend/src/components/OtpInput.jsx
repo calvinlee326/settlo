@@ -40,7 +40,7 @@ export default function OtpInput({ value, onChange, length = 6 }) {
   };
 
   return (
-    <div className="flex justify-center gap-2">
+    <div className="flex justify-center gap-[10px]">
       {digits.map((digit, index) => (
         <input
           key={index}
@@ -54,7 +54,7 @@ export default function OtpInput({ value, onChange, length = 6 }) {
           value={digit}
           onChange={(e) => handleChange(index, e)}
           onKeyDown={(e) => handleKeyDown(index, e)}
-          className="h-14 w-11 rounded-xl border border-slate-300 bg-white text-center text-xl font-semibold text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
+          className={`otp-box ${digit ? 'filled' : ''}`}
         />
       ))}
     </div>

@@ -1,9 +1,8 @@
 const VARIANTS = {
-  primary:
-    'bg-primary-600 text-white hover:bg-primary-700 disabled:bg-primary-600/50',
-  secondary:
-    'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 disabled:opacity-50',
-  danger: 'bg-red-600 text-white hover:bg-red-700 disabled:bg-red-600/50',
+  primary: 'btn-primary',
+  secondary: 'btn-secondary',
+  accent: 'btn-accent',
+  danger: 'btn-danger',
 };
 
 export default function Button({
@@ -13,10 +12,7 @@ export default function Button({
   ...props
 }) {
   return (
-    <button
-      className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed ${VARIANTS[variant]} ${className}`}
-      {...props}
-    >
+    <button className={`btn ${VARIANTS[variant]} ${className}`} {...props}>
       {children}
     </button>
   );

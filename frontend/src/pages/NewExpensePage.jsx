@@ -4,7 +4,7 @@ import api from '../api/axios';
 import useAuthStore from '../store/authStore';
 import Button from '../components/Button';
 import ErrorMessage from '../components/ErrorMessage';
-import LoadingSpinner from '../components/LoadingSpinner';
+import { SkeletonList } from '../components/LoadingSpinner';
 
 export default function NewExpensePage() {
   const { id } = useParams();
@@ -83,17 +83,14 @@ export default function NewExpensePage() {
     }
   };
 
-  if (loading) return <LoadingSpinner />;
+  if (loading) return <SkeletonList count={3} />;
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold text-slate-900">Add Expense</h1>
-      <form
-        onSubmit={handleSubmit}
-        className="space-y-4 rounded-2xl bg-white p-6 shadow-sm"
-      >
+      <h1 className="text-[28px] font-semibold text-white">Add Expense</h1>
+      <form onSubmit={handleSubmit} className="glass space-y-4 p-6">
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
+          <label className="mb-1.5 block text-[13px] font-medium text-white/50">
             Title
           </label>
           <input
@@ -102,16 +99,16 @@ export default function NewExpensePage() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             maxLength={100}
-            className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
+            className="input-glass"
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
+          <label className="mb-1.5 block text-[13px] font-medium text-white/50">
             Amount
           </label>
           <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/35">
               $
             </span>
             <input
@@ -122,19 +119,19 @@ export default function NewExpensePage() {
               placeholder="0.00"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 py-3 pl-8 pr-4 text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
+              className="input-glass pl-8"
             />
           </div>
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
+          <label className="mb-1.5 block text-[13px] font-medium text-white/50">
             Paid by
           </label>
           <select
             value={paidBy}
             onChange={(e) => setPaidBy(e.target.value)}
-            className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
+            className="input-glass"
           >
             {members.map((m) => (
               <option key={m.id} value={m.id}>
@@ -147,7 +144,7 @@ export default function NewExpensePage() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
+          <label className="mb-1.5 block text-[13px] font-medium text-white/50">
             Split type
           </label>
           <div className="grid grid-cols-2 gap-2">
@@ -156,10 +153,10 @@ export default function NewExpensePage() {
                 key={type}
                 type="button"
                 onClick={() => setSplitType(type)}
-                className={`rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${
+                className={`min-h-[44px] rounded-[14px] border px-4 py-2.5 text-sm font-semibold transition-all duration-200 ease-spring ${
                   splitType === type
-                    ? 'border-primary-600 bg-primary-50 text-primary-700'
-                    : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
+                    ? 'border-violet-400/60 bg-violet-500/20 text-white shadow-[0_0_16px_rgba(124,58,237,0.25)]'
+                    : 'border-white/10 bg-white/5 text-white/55 hover:bg-white/10'
                 }`}
               >
                 {type === 'EQUAL' ? 'Equal' : 'Custom'}
@@ -169,16 +166,14 @@ export default function NewExpensePage() {
         </div>
 
         {splitType === 'CUSTOM' && (
-          <div className="space-y-2 rounded-xl bg-slate-50 p-4">
+          <div className="space-y-2 rounded-[14px] border border-white/10 bg-white/[0.04] p-4">
             {members.map((m) => (
               <div key={m.id} className="flex items-center gap-3">
-                <span className="flex-1 truncate text-sm text-slate-700">
-                  {m.id === user?.id
-                    ? 'You'
-                    : m.username || m.phone_number}
+                <span className="flex-1 truncate text-[15px] text-white/75">
+                  {m.id === user?.id ? 'You' : m.username || m.phone_number}
                 </span>
                 <div className="relative w-28">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-white/35">
                     $
                   </span>
                   <input
@@ -194,14 +189,14 @@ export default function NewExpensePage() {
                         [m.id]: e.target.value,
                       }))
                     }
-                    className="w-full rounded-lg border border-slate-300 py-2 pl-7 pr-2 text-sm text-slate-900 focus:border-primary-500 focus:outline-none"
+                    className="input-glass py-2 pl-7 pr-2 text-sm"
                   />
                 </div>
               </div>
             ))}
             <div
-              className={`pt-2 text-right text-sm font-semibold ${
-                customValid ? 'text-emerald-600' : 'text-red-600'
+              className={`pt-2 text-right text-sm font-semibold tabular-nums ${
+                customValid ? 'text-emerald-400' : 'text-red-400'
               }`}
             >
               {customValid
@@ -225,6 +220,7 @@ export default function NewExpensePage() {
           </Button>
           <Button
             type="submit"
+            variant="accent"
             disabled={submitting || (splitType === 'CUSTOM' && !customValid)}
             className="flex-1"
           >

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import api from '../api/axios';
 import ErrorMessage from '../components/ErrorMessage';
-import LoadingSpinner from '../components/LoadingSpinner';
+import { SkeletonList } from '../components/LoadingSpinner';
 import SettlementItem from '../components/SettlementItem';
 
 export default function SettlementPage() {
@@ -43,15 +43,15 @@ export default function SettlementPage() {
     }
   };
 
-  if (loading) return <LoadingSpinner />;
+  if (loading) return <SkeletonList count={3} />;
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-900">Settle Up</h1>
+        <h1 className="text-[28px] font-semibold text-white">Settle Up</h1>
         <Link
           to={`/groups/${id}`}
-          className="text-sm font-medium text-primary-600 hover:underline"
+          className="text-sm font-medium text-sky-400 transition-colors hover:text-sky-300"
         >
           Back to group
         </Link>
@@ -59,22 +59,24 @@ export default function SettlementPage() {
 
       <ErrorMessage message={error} />
 
-      <div className="rounded-2xl bg-white p-5 shadow-sm">
-        <h2 className="text-sm font-semibold text-slate-700">Balances</h2>
+      <div className="glass p-5">
+        <h2 className="text-[13px] font-medium uppercase tracking-wide text-white/50">
+          Balances
+        </h2>
         <div className="mt-3 space-y-2">
           {balances.map((b) => (
             <div
               key={b.user_id}
-              className="flex items-center justify-between text-sm"
+              className="flex items-center justify-between text-[15px]"
             >
-              <span className="text-slate-600">{b.username || 'Unknown'}</span>
+              <span className="text-white/75">{b.username || 'Unknown'}</span>
               <span
-                className={`font-semibold ${
+                className={`font-semibold tabular-nums ${
                   b.balance > 0.004
-                    ? 'text-emerald-600'
+                    ? 'text-emerald-400'
                     : b.balance < -0.004
-                      ? 'text-red-600'
-                      : 'text-slate-400'
+                      ? 'text-red-400'
+                      : 'text-white/30'
                 }`}
               >
                 {b.balance > 0.004 ? '+' : ''}
@@ -85,19 +87,20 @@ export default function SettlementPage() {
         </div>
       </div>
 
-      <h2 className="text-base font-semibold text-slate-900">Payments</h2>
+      <h2 className="text-lg font-medium text-white/90">Payments</h2>
       {settlements.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center">
-          <p className="text-sm text-slate-500">
+        <div className="rounded-glass border border-dashed border-white/15 bg-white/[0.03] p-8 text-center">
+          <p className="text-[15px] text-white/55">
             All settled up! Nobody owes anything.
           </p>
         </div>
       ) : (
         <div className="space-y-3">
-          {settlements.map((settlement) => (
+          {settlements.map((settlement, i) => (
             <SettlementItem
               key={settlement.id}
               settlement={settlement}
+              style={{ animationDelay: `${i * 50}ms` }}
               paying={payingId === settlement.id}
               onPay={() => handlePay(settlement.id)}
             />

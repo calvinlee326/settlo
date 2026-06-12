@@ -33,15 +33,12 @@ export default function NewGroupPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold text-slate-900">New Group</h1>
-      <form
-        onSubmit={handleSubmit}
-        className="space-y-4 rounded-2xl bg-white p-6 shadow-sm"
-      >
+      <h1 className="text-[28px] font-semibold text-white">New Group</h1>
+      <form onSubmit={handleSubmit} className="glass space-y-4 p-6">
         <div>
           <label
             htmlFor="name"
-            className="mb-1 block text-sm font-medium text-slate-700"
+            className="mb-1.5 block text-[13px] font-medium text-white/50"
           >
             Group name
           </label>
@@ -52,15 +49,15 @@ export default function NewGroupPage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             maxLength={100}
-            className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
+            className="input-glass"
           />
         </div>
         <div>
           <label
             htmlFor="description"
-            className="mb-1 block text-sm font-medium text-slate-700"
+            className="mb-1.5 block text-[13px] font-medium text-white/50"
           >
-            Description <span className="text-slate-400">(optional)</span>
+            Description <span className="text-white/30">(optional)</span>
           </label>
           <textarea
             id="description"
@@ -69,7 +66,7 @@ export default function NewGroupPage() {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             maxLength={255}
-            className="w-full resize-none rounded-xl border border-slate-300 px-4 py-3 text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
+            className="input-glass resize-none"
           />
         </div>
         <ErrorMessage message={error} />
@@ -82,7 +79,12 @@ export default function NewGroupPage() {
           >
             Cancel
           </Button>
-          <Button type="submit" disabled={loading} className="flex-1">
+          <Button
+            type="submit"
+            variant="accent"
+            disabled={loading}
+            className="flex-1"
+          >
             {loading ? 'Creating…' : 'Create Group'}
           </Button>
         </div>

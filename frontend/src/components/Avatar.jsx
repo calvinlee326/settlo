@@ -1,20 +1,21 @@
-const COLORS = [
-  'bg-indigo-500',
-  'bg-emerald-500',
-  'bg-amber-500',
-  'bg-rose-500',
-  'bg-sky-500',
-  'bg-violet-500',
-  'bg-teal-500',
-  'bg-orange-500',
+const GRADIENTS = [
+  ['#7c3aed', '#0ea5e9'],
+  ['#0ea5e9', '#14b8a6'],
+  ['#ec4899', '#8b5cf6'],
+  ['#f59e0b', '#ef4444'],
+  ['#14b8a6', '#22c55e'],
+  ['#6366f1', '#ec4899'],
+  ['#0ea5e9', '#6366f1'],
+  ['#a855f7', '#f43f5e'],
 ];
 
-function colorFor(name) {
+function gradientFor(name) {
   let hash = 0;
   for (let i = 0; i < name.length; i += 1) {
     hash = (hash * 31 + name.charCodeAt(i)) | 0;
   }
-  return COLORS[Math.abs(hash) % COLORS.length];
+  const [from, to] = GRADIENTS[Math.abs(hash) % GRADIENTS.length];
+  return `linear-gradient(135deg, ${from}, ${to})`;
 }
 
 export default function Avatar({ name, size = 'md' }) {
@@ -31,7 +32,8 @@ export default function Avatar({ name, size = 'md' }) {
   return (
     <div
       title={display}
-      className={`flex items-center justify-center rounded-full font-semibold text-white ${sizeClass} ${colorFor(display)}`}
+      style={{ background: gradientFor(display) }}
+      className={`flex shrink-0 items-center justify-center rounded-full font-semibold text-white shadow-[0_2px_12px_rgba(0,0,0,0.3)] ring-1 ring-white/20 ${sizeClass}`}
     >
       {initials}
     </div>

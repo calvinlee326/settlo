@@ -12,16 +12,33 @@ import InvitePage from './pages/InvitePage';
 
 function Layout({ children }) {
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="min-h-screen">
       <Navbar />
-      <main className="mx-auto max-w-md px-4 pb-24 pt-4">{children}</main>
+      <main
+        className="page-enter mx-auto max-w-[480px] px-4 pt-[76px]"
+        style={{ paddingBottom: 'calc(7rem + env(safe-area-inset-bottom))' }}
+      >
+        {children}
+      </main>
     </div>
+  );
+}
+
+function AmbientBackground() {
+  return (
+    <>
+      <div className="ambient-blob blob-1" />
+      <div className="ambient-blob blob-2" />
+      <div className="ambient-blob blob-3" />
+    </>
   );
 }
 
 export default function App() {
   return (
-    <Routes>
+    <>
+      <AmbientBackground />
+      <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/verify" element={<VerifyPage />} />
       <Route
@@ -84,7 +101,8 @@ export default function App() {
           </ProtectedRoute>
         }
       />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </>
   );
 }
