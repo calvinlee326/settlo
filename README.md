@@ -22,6 +22,19 @@ uvicorn app.main:app --reload
 
 The API runs at http://localhost:8000 (docs at http://localhost:8000/docs).
 
+For local OTP testing, set this in `backend/.env`:
+
+```env
+OTP_DELIVERY_WEBHOOK_URL=http://127.0.0.1:9000
+```
+
+Then run the OTP catcher in a separate terminal:
+
+```bash
+cd backend
+python otp_catcher.py
+```
+
 Tables are created automatically on first start. To manage schema with Alembic instead:
 
 ```bash
@@ -63,7 +76,7 @@ Each member's net balance = total paid − total owed. A greedy max-heap matchin
 
 | Method | Path | Description |
 |---|---|---|
-| POST | /api/auth/send-otp | Send (print) OTP |
+| POST | /api/auth/send-otp | Send OTP |
 | POST | /api/auth/verify-otp | Verify OTP, issue tokens |
 | POST | /api/auth/set-username | Set display name |
 | POST | /api/auth/logout | Blacklist token |
