@@ -45,6 +45,42 @@ The app runs at http://localhost:5173.
 docker compose up
 ```
 
+## Deployment
+
+The app is deployed as two services: the frontend on **Vercel** and the backend on **Railway**.
+
+### Backend (Railway)
+
+Set these variables on the Railway service:
+
+- `DATABASE_URL` — managed PostgreSQL URL. Plain `postgres://` URLs are converted to `postgresql+psycopg://` automatically for SQLAlchemy and Alembic.
+- `SECRET_KEY` — long random string (placeholder values are rejected at startup).
+- `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_VERIFY_SERVICE_SID` — Twilio Verify credentials for OTP delivery.
+- `FRONTEND_URL` — the deployed frontend origin (e.g. `https://settlo-sooty.vercel.app`, no trailing slash). Required for CORS; requests from other origins are rejected.
+- `EXTRA_ORIGINS` — optional comma-separated list of additional allowed origins.
+
+### Frontend (Vercel)
+
+- Set `VITE_API_URL` to the Railway backend URL (e.g. `https://settlo-production.up.railway.app`).
+- `frontend/vercel.json` rewrites all paths to `index.html` so client-side routes like `/login` work on direct load and refresh.
+
+## Twilio Verify Setup
+
+OTP delivery and verification are handled entirely by Twilio Verify — the backend never generates or stores OTP codes itself, and sending OTPs fails if Twilio is not configured.
+
+1. Create an account at [twilio.com](https://www.twilio.com) and copy the **Account SID** and **Auth Token** from the Console dashboard.
+2. In the Console, go to **Verify → Services**, create a new Verify Service, and copy its **Service SID** (starts with `VA`).
+3. Set the values in `backend/.env` (local) or the Railway service variables (production):
+
+```bash
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN=your-auth-token
+TWILIO_VERIFY_SERVICE_SID=VAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_VERIFY_CHANNEL=sms
+```
+
+`TWILIO_VERIFY_CHANNEL` defaults to `sms`; Twilio Verify also supports channels such as `whatsapp` and `call`. On a Twilio trial account, OTPs can only be sent to phone numbers you have verified in the Twilio Console.
+
 ## Authentication
 
 Phone-number login with OTP — no passwords.
