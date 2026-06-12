@@ -16,26 +16,14 @@ cd backend
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env   # then set SECRET_KEY and OTP_DELIVERY_WEBHOOK_URL
+cp .env.example .env   # then set SECRET_KEY and Twilio Verify values
+alembic upgrade head
 uvicorn app.main:app --reload
 ```
 
 The API runs at http://localhost:8000 (docs at http://localhost:8000/docs).
 
-For local OTP testing, set this in `backend/.env`:
-
-```env
-OTP_DELIVERY_WEBHOOK_URL=http://127.0.0.1:9000
-```
-
-Then run the OTP catcher in a separate terminal:
-
-```bash
-cd backend
-python otp_catcher.py
-```
-
-Tables are created automatically on first start. To manage schema with Alembic instead:
+For local SQLite development, set `DATABASE_URL=sqlite:///./settlo.db`. For production, use a managed PostgreSQL URL such as `postgresql+psycopg://...`.
 
 ```bash
 alembic upgrade head
@@ -62,11 +50,11 @@ docker compose up
 Phone-number login with OTP — no passwords.
 
 1. Enter your phone number on `/login`.
-2. A 6-digit OTP is delivered through the configured `OTP_DELIVERY_WEBHOOK_URL`.
+2. A 6-digit OTP is delivered through Twilio Verify.
 3. Enter the code on `/verify`. First-time numbers get an account automatically and are asked for a display name.
 4. The app receives a 30-minute access token and a 7-day refresh token; refresh is automatic.
 
-Security: OTP expires in 10 minutes, verification locks for 10 minutes after 5 failed attempts, OTP sends are rate-limited, logout blacklists tokens, and tokens are not persisted in browser storage.
+Security: OTP is delivered and checked by Twilio Verify, OTP sends are rate-limited, logout blacklists tokens, and tokens are not persisted in browser storage.
 
 ## Settlement Algorithm
 

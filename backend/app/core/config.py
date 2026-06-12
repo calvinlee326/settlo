@@ -11,12 +11,13 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     OTP_EXPIRE_MINUTES: int = 10
-    OTP_MAX_ATTEMPTS: int = 5
     OTP_SEND_LIMIT: int = 3
     OTP_IP_SEND_LIMIT: int = 20
     OTP_SEND_WINDOW_MINUTES: int = 10
-    OTP_DELIVERY_WEBHOOK_URL: str | None = None
-    OTP_DELIVERY_TIMEOUT_SECONDS: float = 5.0
+    TWILIO_ACCOUNT_SID: str | None = None
+    TWILIO_AUTH_TOKEN: str | None = None
+    TWILIO_VERIFY_SERVICE_SID: str | None = None
+    TWILIO_VERIFY_CHANNEL: str = "sms"
     FRONTEND_URL: str = "http://localhost:5173"
     EXTRA_ORIGINS: str = ""
 

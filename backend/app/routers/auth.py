@@ -88,6 +88,10 @@ def verify_otp_endpoint(body: VerifyOTPRequest, db: Session = Depends(get_db)):
         verify_otp(db, body.phone_number, body.code)
     except OTPLockedError as exc:
         raise HTTPException(status_code=status.HTTP_423_LOCKED, detail=str(exc))
+    except OTPDeliveryError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
+        )
     except OTPInvalidError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
