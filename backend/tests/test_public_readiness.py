@@ -17,7 +17,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql.schema import MetaData
 
 from app.core.config import Settings
-from app.database import Base
+from app.database import Base, database_url_for_sqlalchemy
 from app.models import *  # noqa: F401,F403
 from app.models.expense import Expense, ExpenseSplit, Settlement, SplitType
 from app.models.group import Group, Membership
@@ -158,6 +158,16 @@ class PublicReadinessTest(unittest.TestCase):
 
         self.assertIn("psycopg[binary]", text)
         self.assertIn("twilio", text)
+
+    def test_plain_postgres_database_url_uses_psycopg_driver(self):
+        self.assertEqual(
+            database_url_for_sqlalchemy("postgresql://user:pass@host:5432/db"),
+            "postgresql+psycopg://user:pass@host:5432/db",
+        )
+        self.assertEqual(
+            database_url_for_sqlalchemy("postgres://user:pass@host:5432/db"),
+            "postgresql+psycopg://user:pass@host:5432/db",
+        )
 
     def test_app_import_does_not_create_tables(self):
         existing = sys.modules.pop("app.main", None)
