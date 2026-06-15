@@ -155,5 +155,35 @@ class SettleArchiveTest(unittest.TestCase):
         )
 
 
+    def test_create_expense_blocked_when_settled(self):
+        from fastapi import HTTPException
+        from app.routers.expenses import create_expense
+        from app.routers.settlements import confirm_settlement
+        from app.schemas.expense import ExpenseCreate
+
+        a, b, g = self._group()
+        self._expense(g, a, a, b, "10.00", "5.00", "5.00")
+        confirm_settlement(g.id, current_user=a, db=self.db)
+
+        body = ExpenseCreate(
+            title="Late", amount=Decimal("4.00"), paid_by=a.id, split_type="EQUAL"
+        )
+        with self.assertRaises(HTTPException) as ctx:
+            create_expense(g.id, body, current_user=a, db=self.db)
+        self.assertEqual(ctx.exception.status_code, 400)
+
+    def test_delete_expense_blocked_when_settled(self):
+        from fastapi import HTTPException
+        from app.routers.expenses import delete_expense
+        from app.routers.settlements import confirm_settlement
+
+        a, b, g = self._group()
+        e = self._expense(g, a, a, b, "10.00", "5.00", "5.00")
+        confirm_settlement(g.id, current_user=a, db=self.db)
+        with self.assertRaises(HTTPException) as ctx:
+            delete_expense(g.id, e.id, current_user=a, db=self.db)
+        self.assertEqual(ctx.exception.status_code, 400)
+
+
 if __name__ == "__main__":
     unittest.main()
