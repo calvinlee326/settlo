@@ -86,6 +86,7 @@ export default function GroupDetailPage() {
   if (!group) return <ErrorMessage message={error || 'Group not found'} />;
 
   const isCreator = user?.id === group.created_by;
+  const isSettled = Boolean(group.settled_at);
   const total = expenses.reduce((sum, e) => sum + e.amount, 0);
 
   return (
@@ -132,6 +133,12 @@ export default function GroupDetailPage() {
 
       <ErrorMessage message={error} />
 
+      {isSettled && (
+        <div className="rounded-glass border border-emerald-400/30 bg-emerald-500/10 p-3 text-center text-[14px] text-emerald-300">
+          Settled — this group is archived in Payment History.
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-medium text-white/90">Expenses</h2>
         <span className="text-sm font-medium tabular-nums text-white/55">
@@ -152,26 +159,30 @@ export default function GroupDetailPage() {
               key={expense.id}
               expense={expense}
               style={{ animationDelay: `${i * 50}ms` }}
-              canDelete={expense.created_by === user?.id || isCreator}
+              canDelete={!isSettled && (expense.created_by === user?.id || isCreator)}
               onDelete={() => handleDeleteExpense(expense.id)}
             />
           ))}
         </div>
       )}
 
-      <Link to={`/groups/${id}/settle`} className="block">
-        <Button variant="primary" className="mt-2 w-full">
-          Settle Up
-        </Button>
-      </Link>
+      {!isSettled && (
+        <Link to={`/groups/${id}/settle`} className="block">
+          <Button variant="primary" className="mt-2 w-full">
+            Settle Up
+          </Button>
+        </Link>
+      )}
 
-      <Link
-        to={`/groups/${id}/expenses/new`}
-        aria-label="Add expense"
-        className="fab"
-      >
-        +
-      </Link>
+      {!isSettled && (
+        <Link
+          to={`/groups/${id}/expenses/new`}
+          aria-label="Add expense"
+          className="fab"
+        >
+          +
+        </Link>
+      )}
 
       {inviteLink && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
