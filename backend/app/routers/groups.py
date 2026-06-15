@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
@@ -5,9 +7,10 @@ from sqlalchemy.orm import Session, joinedload
 from app.core.config import settings
 from app.core.security import get_current_user
 from app.database import get_db
-from app.models.expense import Expense, ExpenseSplit, Settlement
+from app.models.expense import Expense, ExpenseSplit, Settlement, SplitType
 from app.models.group import Group, Membership
 from app.models.user import User, utcnow
+from app.services.settlement import equal_split
 from app.schemas.group import (
     GroupCreate,
     GroupDetail,
@@ -238,6 +241,28 @@ def join_group(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Group is full"
         )
     db.add(Membership(user_id=current_user.id, group_id=group.id))
+    db.flush()
+    if group.settled_at is None:
+        member_ids = [
+            m.user_id
+            for m in db.query(Membership)
+            .filter(Membership.group_id == group.id)
+            .all()
+        ]
+        equal_expenses = (
+            db.query(Expense)
+            .filter(
+                Expense.group_id == group.id,
+                Expense.split_type == SplitType.EQUAL,
+            )
+            .all()
+        )
+        for e in equal_expenses:
+            db.query(ExpenseSplit).filter(
+                ExpenseSplit.expense_id == e.id
+            ).delete(synchronize_session=False)
+            for uid, amount in equal_split(Decimal(e.amount), member_ids):
+                db.add(ExpenseSplit(expense_id=e.id, user_id=uid, amount=amount))
     db.commit()
     return _group_detail(db, group)
 

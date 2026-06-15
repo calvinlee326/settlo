@@ -4,6 +4,18 @@ from decimal import Decimal
 CENT = Decimal("0.01")
 
 
+def equal_split(total: Decimal, member_ids: list[str]) -> list[tuple[str, Decimal]]:
+    total = total.quantize(CENT)
+    n = len(member_ids)
+    base = (total / n).quantize(CENT, rounding="ROUND_DOWN")
+    remainder_cents = int((total - base * n) / CENT)
+    shares: list[tuple[str, Decimal]] = []
+    for i, user_id in enumerate(member_ids):
+        share = base + (CENT if i < remainder_cents else Decimal("0"))
+        shares.append((user_id, share))
+    return shares
+
+
 def calculate_settlements(balances: dict[str, Decimal]) -> list[dict]:
     """Greedy min-transaction settlement.
 

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.core.security import get_current_user
 from app.database import get_db
 from app.models.expense import Expense, ExpenseSplit, SplitType
+from app.services.settlement import equal_split
 from app.models.group import Group, Membership
 from app.models.user import User
 from app.routers.groups import get_group_or_404, require_membership
@@ -45,14 +46,7 @@ def _build_splits(
     total = body.amount.quantize(CENT)
 
     if body.split_type == SplitType.EQUAL:
-        n = len(member_ids)
-        base = (total / n).quantize(CENT, rounding="ROUND_DOWN")
-        remainder_cents = int((total - base * n) / CENT)
-        splits = []
-        for i, user_id in enumerate(member_ids):
-            share = base + (CENT if i < remainder_cents else Decimal("0"))
-            splits.append((user_id, share))
-        return splits
+        return equal_split(total, member_ids)
 
     if not body.splits:
         raise HTTPException(

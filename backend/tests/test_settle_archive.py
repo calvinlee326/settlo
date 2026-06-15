@@ -216,5 +216,36 @@ class SettleArchiveTest(unittest.TestCase):
         self.assertEqual(ctx.exception.status_code, 400)
 
 
+    def test_join_resplits_equal_expenses(self):
+        from app.routers.expenses import create_expense
+        from app.routers.groups import join_group
+        from app.routers.settlements import _compute_balances
+        from app.schemas.expense import ExpenseCreate
+
+        a = User(phone_number="+15550000010", username="A2")
+        self.db.add(a)
+        self.db.flush()
+        g = Group(name="Solo", created_by=a.id)
+        self.db.add(g)
+        self.db.flush()
+        self.db.add(Membership(user_id=a.id, group_id=g.id))
+        self.db.commit()
+
+        # A is the only member; a $30 equal expense splits to A alone
+        body = ExpenseCreate(
+            title="Dinner", amount=Decimal("30.00"), paid_by=a.id, split_type="EQUAL"
+        )
+        create_expense(g.id, body, current_user=a, db=self.db)
+
+        b = User(phone_number="+15550000011", username="B2")
+        self.db.add(b)
+        self.db.commit()
+        join_group(g.invite_token, current_user=b, db=self.db)
+
+        balances = _compute_balances(self.db, g.id)
+        self.assertEqual(balances[a.id].quantize(Decimal("0.01")), Decimal("15.00"))
+        self.assertEqual(balances[b.id].quantize(Decimal("0.01")), Decimal("-15.00"))
+
+
 if __name__ == "__main__":
     unittest.main()
