@@ -99,6 +99,61 @@ class SettleArchiveTest(unittest.TestCase):
         self.assertEqual(listed[0].total, 10.0)
         self.assertIsNone(listed[0].settled_at)
 
+    def test_confirm_archives_group_and_persists_settlement(self):
+        from app.routers.settlements import confirm_settlement, get_settlements
+
+        a, b, g = self._group()
+        self._expense(g, a, a, b, "10.00", "5.00", "5.00")  # B owes A 5
+        confirm_settlement(g.id, current_user=a, db=self.db)
+
+        row = self.db.query(Group).filter(Group.id == g.id).one()
+        self.assertIsNotNone(row.settled_at)
+        self.assertEqual(row.settled_by, a.id)
+
+        persisted = self.db.query(Settlement).filter(
+            Settlement.group_id == g.id, Settlement.is_paid.is_(True)
+        ).all()
+        self.assertEqual(len(persisted), 1)
+        self.assertEqual(persisted[0].from_user, b.id)
+        self.assertEqual(persisted[0].to_user, a.id)
+
+        result = get_settlements(g.id, current_user=a, db=self.db)
+        self.assertEqual(result.settlements, [])
+        self.assertEqual(len(result.paid_settlements), 1)
+        self.assertTrue(all(abs(bal.balance) < 0.005 for bal in result.balances))
+
+    def test_confirm_rejects_when_already_settled(self):
+        from fastapi import HTTPException
+        from app.routers.settlements import confirm_settlement
+
+        a, b, g = self._group()
+        self._expense(g, a, a, b, "10.00", "5.00", "5.00")
+        confirm_settlement(g.id, current_user=a, db=self.db)
+        with self.assertRaises(HTTPException) as ctx:
+            confirm_settlement(g.id, current_user=a, db=self.db)
+        self.assertEqual(ctx.exception.status_code, 400)
+
+    def test_confirm_rejects_when_no_expenses(self):
+        from fastapi import HTTPException
+        from app.routers.settlements import confirm_settlement
+
+        a, b, g = self._group()
+        with self.assertRaises(HTTPException) as ctx:
+            confirm_settlement(g.id, current_user=a, db=self.db)
+        self.assertEqual(ctx.exception.status_code, 400)
+
+    def test_confirm_with_zero_debt_still_archives(self):
+        from app.routers.settlements import confirm_settlement
+
+        a, b, g = self._group()
+        self._expense(g, a, a, b, "10.00", "10.00", "0.00")  # nets to zero
+        confirm_settlement(g.id, current_user=a, db=self.db)
+        row = self.db.query(Group).filter(Group.id == g.id).one()
+        self.assertIsNotNone(row.settled_at)
+        self.assertEqual(
+            self.db.query(Settlement).filter(Settlement.group_id == g.id).count(), 0
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

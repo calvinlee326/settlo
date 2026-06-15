@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.security import get_current_user
 from app.database import get_db
 from app.models.expense import Expense, ExpenseSplit, Settlement
-from app.models.group import Membership
+from app.models.group import Group, Membership
 from app.models.user import User
 from app.routers.groups import get_group_or_404, require_membership
 from app.schemas.settlement import BalanceOut, SettlementOut, SettlementResult
@@ -142,6 +142,47 @@ def get_settlements(
         settlements=[_transaction_out(group_id, t, usernames) for t in transactions],
         paid_settlements=[_settlement_out(s, usernames) for s in paid_settlements],
     )
+
+
+@router.post("/confirm", response_model=SettlementResult)
+def confirm_settlement(
+    group_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    group = get_group_or_404(db, group_id)
+    require_membership(db, group_id, current_user.id)
+
+    if group.settled_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Group is already settled"
+        )
+    has_expense = db.query(Expense.id).filter(Expense.group_id == group_id).first()
+    if has_expense is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Add an expense before settling",
+        )
+
+    balances = _compute_balances(db, group_id)
+    transactions = calculate_settlements(balances)
+    now = _utcnow()
+    for t in transactions:
+        db.add(
+            Settlement(
+                group_id=group_id,
+                from_user=t["from_user"],
+                to_user=t["to_user"],
+                amount=t["amount"],
+                is_paid=True,
+                paid_at=now,
+            )
+        )
+    group.settled_at = now
+    group.settled_by = current_user.id
+    db.commit()
+
+    return get_settlements(group_id, current_user=current_user, db=db)
 
 
 @router.post("/{settlement_id}/pay", response_model=SettlementOut)
