@@ -47,7 +47,7 @@ export default function SettlementItem({ settlement, onPay, paying, style }) {
           </svg>
           Paid
         </span>
-      ) : (
+      ) : onPay ? (
         <Button
           onClick={onPay}
           disabled={paying}
@@ -55,7 +55,7 @@ export default function SettlementItem({ settlement, onPay, paying, style }) {
         >
           {paying ? 'Saving…' : 'Mark as Paid'}
         </Button>
-      )}
+      ) : null}
     </div>
   );
 }

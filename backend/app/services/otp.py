@@ -116,16 +116,25 @@ def generate_otp(db: Session, phone_number: str) -> OTPCode:
     try:
         db.add(otp)
         db.flush()
-        _start_twilio_verification(phone_number)
+        if not settings.DEV_OTP_CODE:
+            _start_twilio_verification(phone_number)
         db.commit()
     except Exception:
         db.rollback()
         raise
 
+    if settings.DEV_OTP_CODE:
+        logger.warning(
+            "DEV_OTP_CODE active: Twilio bypassed, use the fixed dev code to log in"
+        )
     logger.info("OTP sent for phone ending in %s", phone_number[-4:])
     return otp
 
 
 def verify_otp(db: Session, phone_number: str, code: str) -> None:
+    if settings.DEV_OTP_CODE:
+        if code != settings.DEV_OTP_CODE:
+            raise OTPInvalidError("Invalid OTP code.")
+        return
     if _check_twilio_verification(phone_number, code) != "approved":
         raise OTPInvalidError("Invalid OTP code.")

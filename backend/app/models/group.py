@@ -24,6 +24,11 @@ class Group(Base):
     max_members: Mapped[int] = mapped_column(Integer, default=20)
     created_by: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    settled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    settled_by: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("users.id"), nullable=True
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     memberships: Mapped[list["Membership"]] = relationship(
         back_populates="group", cascade="all, delete-orphan"

@@ -1,17 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import api from '../api/axios';
+import Button from '../components/Button';
 import ErrorMessage from '../components/ErrorMessage';
 import { SkeletonList } from '../components/LoadingSpinner';
 import SettlementItem from '../components/SettlementItem';
 
 export default function SettlementPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [balances, setBalances] = useState([]);
   const [settlements, setSettlements] = useState([]);
-  const [paidSettlements, setPaidSettlements] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [payingId, setPayingId] = useState(null);
+  const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
@@ -20,7 +21,6 @@ export default function SettlementPage() {
       const { data } = await api.get(`/groups/${id}/settlements/`);
       setBalances(data.balances);
       setSettlements(data.settlements);
-      setPaidSettlements(data.paid_settlements ?? []);
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to load settlements');
     } finally {
@@ -32,16 +32,15 @@ export default function SettlementPage() {
     load();
   }, [load]);
 
-  const handlePay = async (settlementId) => {
-    setPayingId(settlementId);
+  const handleConfirm = async () => {
+    setConfirming(true);
     setError('');
     try {
-      await api.post(`/groups/${id}/settlements/${settlementId}/pay`);
-      await load();
+      await api.post(`/groups/${id}/settlements/confirm`);
+      navigate('/');
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to mark as paid');
-    } finally {
-      setPayingId(null);
+      setError(err.response?.data?.detail || 'Failed to settle');
+      setConfirming(false);
     }
   };
 
@@ -89,11 +88,11 @@ export default function SettlementPage() {
         </div>
       </div>
 
-      <h2 className="text-lg font-medium text-white/90">Payments</h2>
+      <h2 className="text-lg font-medium text-white/90">Who pays whom</h2>
       {settlements.length === 0 ? (
         <div className="rounded-glass border border-dashed border-white/15 bg-white/[0.03] p-8 text-center">
           <p className="text-[15px] text-white/55">
-            All settled up! Nobody owes anything.
+            All even — nobody owes anything.
           </p>
         </div>
       ) : (
@@ -103,29 +102,21 @@ export default function SettlementPage() {
               key={settlement.id}
               settlement={settlement}
               style={{ animationDelay: `${i * 50}ms` }}
-              paying={payingId === settlement.id}
-              onPay={() => handlePay(settlement.id)}
+              paying={false}
+              onPay={null}
             />
           ))}
         </div>
       )}
 
-      {paidSettlements.length > 0 && (
-        <>
-          <h2 className="text-lg font-medium text-white/90">Payment History</h2>
-          <div className="space-y-3">
-            {paidSettlements.map((settlement, i) => (
-              <SettlementItem
-                key={settlement.id}
-                settlement={settlement}
-                style={{ animationDelay: `${i * 50}ms` }}
-                paying={false}
-                onPay={null}
-              />
-            ))}
-          </div>
-        </>
-      )}
+      <Button
+        variant="primary"
+        className="w-full"
+        onClick={handleConfirm}
+        disabled={confirming}
+      >
+        {confirming ? 'Settling…' : 'Confirm & settle'}
+      </Button>
     </div>
   );
 }

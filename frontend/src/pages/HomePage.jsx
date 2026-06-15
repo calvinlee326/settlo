@@ -4,6 +4,8 @@ import api from '../api/axios';
 import ErrorMessage from '../components/ErrorMessage';
 import GroupCard from '../components/GroupCard';
 import { SkeletonList } from '../components/LoadingSpinner';
+import useAuthStore from '../store/authStore';
+import PaymentHistoryItem from '../components/PaymentHistoryItem';
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -11,6 +13,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [joinInput, setJoinInput] = useState('');
+  const user = useAuthStore((s) => s.user);
 
   const handleJoin = () => {
     const val = joinInput.trim();
@@ -36,6 +39,9 @@ export default function HomePage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const activeGroups = groups.filter((g) => !g.settled_at);
+  const settledGroups = groups.filter((g) => g.settled_at);
+
   return (
     <div className="space-y-4">
       <h1 className="text-[28px] font-semibold text-white">My Groups</h1>
@@ -50,11 +56,26 @@ export default function HomePage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {groups.map((group, i) => (
+          {activeGroups.map((group, i) => (
             <GroupCard
               key={group.id}
               group={group}
               style={{ animationDelay: `${i * 50}ms` }}
+            />
+          ))}
+        </div>
+      )}
+      {settledGroups.length > 0 && (
+        <div className="space-y-3 pt-2">
+          <h2 className="text-lg font-medium text-white/90">Payment History</h2>
+          {settledGroups.map((group) => (
+            <PaymentHistoryItem
+              key={group.id}
+              group={group}
+              canDelete={group.created_by === user?.id}
+              onDeleted={(gid) =>
+                setGroups((prev) => prev.filter((g) => g.id !== gid))
+              }
             />
           ))}
         </div>

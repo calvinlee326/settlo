@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.core.security import get_current_user
 from app.database import get_db
 from app.models.expense import Expense, ExpenseSplit, SplitType
+from app.services.settlement import equal_split
 from app.models.group import Group, Membership
 from app.models.user import User
 from app.routers.groups import get_group_or_404, require_membership
@@ -45,14 +46,7 @@ def _build_splits(
     total = body.amount.quantize(CENT)
 
     if body.split_type == SplitType.EQUAL:
-        n = len(member_ids)
-        base = (total / n).quantize(CENT, rounding="ROUND_DOWN")
-        remainder_cents = int((total - base * n) / CENT)
-        splits = []
-        for i, user_id in enumerate(member_ids):
-            share = base + (CENT if i < remainder_cents else Decimal("0"))
-            splits.append((user_id, share))
-        return splits
+        return equal_split(total, member_ids)
 
     if not body.splits:
         raise HTTPException(
@@ -90,7 +84,11 @@ def create_expense(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    get_group_or_404(db, group_id)
+    group = get_group_or_404(db, group_id)
+    if group.settled_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Group is already settled"
+        )
     require_membership(db, group_id, current_user.id)
 
     member_ids = [
@@ -151,6 +149,10 @@ def delete_expense(
 ):
     group = get_group_or_404(db, group_id)
     require_membership(db, group_id, current_user.id)
+    if group.settled_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Group is already settled"
+        )
     expense = (
         db.query(Expense)
         .filter(Expense.id == expense_id, Expense.group_id == group_id)

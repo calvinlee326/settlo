@@ -1,13 +1,16 @@
+from decimal import Decimal
+
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.config import settings
 from app.core.security import get_current_user
 from app.database import get_db
-from app.models.expense import Expense, ExpenseSplit, Settlement
+from app.models.expense import Expense, ExpenseSplit, Settlement, SplitType
 from app.models.group import Group, Membership
-from app.models.user import User
+from app.models.user import User, utcnow
+from app.services.settlement import equal_split
 from app.schemas.group import (
     GroupCreate,
     GroupDetail,
@@ -21,7 +24,11 @@ router = APIRouter(prefix="/api/groups", tags=["groups"])
 
 
 def get_group_or_404(db: Session, group_id: str) -> Group:
-    group = db.query(Group).filter(Group.id == group_id).first()
+    group = (
+        db.query(Group)
+        .filter(Group.id == group_id, Group.deleted_at.is_(None))
+        .first()
+    )
     if group is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Group not found"
@@ -119,6 +126,7 @@ def _group_detail(db: Session, group: Group) -> GroupDetail:
         created_at=group.created_at,
         member_count=len(memberships),
         members=[_member_out(m) for m in memberships],
+        settled_at=group.settled_at,
     )
 
 
@@ -129,7 +137,7 @@ def list_my_groups(
     groups = (
         db.query(Group)
         .join(Membership, Membership.group_id == Group.id)
-        .filter(Membership.user_id == current_user.id)
+        .filter(Membership.user_id == current_user.id, Group.deleted_at.is_(None))
         .order_by(Group.created_at.desc())
         .all()
     )
@@ -137,6 +145,16 @@ def list_my_groups(
         g.id: db.query(Membership).filter(Membership.group_id == g.id).count()
         for g in groups
     }
+    totals: dict[str, float] = {}
+    group_ids = [g.id for g in groups]
+    if group_ids:
+        rows = (
+            db.query(Expense.group_id, func.sum(Expense.amount))
+            .filter(Expense.group_id.in_(group_ids))
+            .group_by(Expense.group_id)
+            .all()
+        )
+        totals = {gid: float(total or 0) for gid, total in rows}
     return [
         GroupOut(
             id=g.id,
@@ -146,6 +164,8 @@ def list_my_groups(
             created_by=g.created_by,
             created_at=g.created_at,
             member_count=counts[g.id],
+            settled_at=g.settled_at,
+            total=totals.get(g.id, 0.0),
         )
         for g in groups
     ]
@@ -157,7 +177,11 @@ def preview_invite(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    group = db.query(Group).filter(Group.invite_token == invite_token).first()
+    group = (
+        db.query(Group)
+        .filter(Group.invite_token == invite_token, Group.deleted_at.is_(None))
+        .first()
+    )
     if group is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Invalid invite link"
@@ -191,7 +215,11 @@ def join_group(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    group = db.query(Group).filter(Group.invite_token == invite_token).first()
+    group = (
+        db.query(Group)
+        .filter(Group.invite_token == invite_token, Group.deleted_at.is_(None))
+        .first()
+    )
     if group is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Invalid invite link"
@@ -213,6 +241,28 @@ def join_group(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Group is full"
         )
     db.add(Membership(user_id=current_user.id, group_id=group.id))
+    db.flush()
+    if group.settled_at is None:
+        member_ids = [
+            m.user_id
+            for m in db.query(Membership)
+            .filter(Membership.group_id == group.id)
+            .all()
+        ]
+        equal_expenses = (
+            db.query(Expense)
+            .filter(
+                Expense.group_id == group.id,
+                Expense.split_type == SplitType.EQUAL,
+            )
+            .all()
+        )
+        for e in equal_expenses:
+            db.query(ExpenseSplit).filter(
+                ExpenseSplit.expense_id == e.id
+            ).delete(synchronize_session=False)
+            for uid, amount in equal_split(Decimal(e.amount), member_ids):
+                db.add(ExpenseSplit(expense_id=e.id, user_id=uid, amount=amount))
     db.commit()
     return _group_detail(db, group)
 
@@ -240,23 +290,7 @@ def delete_group(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only the group creator can delete the group",
         )
-    expense_ids = [
-        e.id for e in db.query(Expense.id).filter(Expense.group_id == group_id).all()
-    ]
-    if expense_ids:
-        db.query(ExpenseSplit).filter(
-            ExpenseSplit.expense_id.in_(expense_ids)
-        ).delete(synchronize_session=False)
-    db.query(Expense).filter(Expense.group_id == group_id).delete(
-        synchronize_session=False
-    )
-    db.query(Settlement).filter(Settlement.group_id == group_id).delete(
-        synchronize_session=False
-    )
-    db.query(Membership).filter(Membership.group_id == group_id).delete(
-        synchronize_session=False
-    )
-    db.delete(group)
+    group.deleted_at = utcnow()
     db.commit()
 
 

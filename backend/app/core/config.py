@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     TWILIO_VERIFY_CHANNEL: str = "sms"
     FRONTEND_URL: str = "http://localhost:5173"
     EXTRA_ORIGINS: str = ""
+    DEV_OTP_CODE: str | None = None
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
@@ -29,6 +30,15 @@ class Settings(BaseSettings):
         if value in {"change-this-secret-key", "change-this-to-a-long-random-string"}:
             raise ValueError("SECRET_KEY must be changed before startup")
         return value
+
+    @model_validator(mode="after")
+    def _guard_dev_otp(self) -> "Settings":
+        if self.DEV_OTP_CODE and "sqlite" not in self.DATABASE_URL:
+            raise ValueError(
+                "DEV_OTP_CODE is a local-only login bypass and may only be used "
+                "with a SQLite DATABASE_URL"
+            )
+        return self
 
 
 @lru_cache
