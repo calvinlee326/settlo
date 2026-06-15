@@ -166,7 +166,7 @@ export default function GroupDetailPage() {
         </div>
       )}
 
-      {!isSettled && (
+      {!isSettled && expenses.length > 0 && (
         <Link to={`/groups/${id}/settle`} className="block">
           <Button variant="primary" className="mt-2 w-full">
             Settle Up

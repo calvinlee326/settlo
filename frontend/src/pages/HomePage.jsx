@@ -48,7 +48,7 @@ export default function HomePage() {
       <ErrorMessage message={error} />
       {loading ? (
         <SkeletonList count={3} />
-      ) : activeGroups.length === 0 && !error ? (
+      ) : groups.length === 0 && !error ? (
         <div className="rounded-glass border border-dashed border-white/15 bg-white/[0.03] p-8 text-center">
           <p className="text-[15px] text-white/55">
             No groups yet. Create one to start splitting bills with friends.
