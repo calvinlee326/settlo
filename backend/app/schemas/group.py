@@ -24,6 +24,8 @@ class GroupOut(BaseModel):
     max_members: int
     created_by: str
     created_at: datetime
+    settled_at: datetime | None = None
+    total: float = 0
     member_count: int = 0
 
 
