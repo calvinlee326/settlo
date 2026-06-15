@@ -67,6 +67,38 @@ class SettleArchiveTest(unittest.TestCase):
         self.assertIsNone(reloaded.settled_by)
         self.assertIsNone(reloaded.deleted_at)
 
+    def test_get_group_or_404_excludes_soft_deleted(self):
+        from fastapi import HTTPException
+        from app.routers.groups import get_group_or_404
+        from app.models.user import utcnow
+
+        a, b, g = self._group()
+        g.deleted_at = utcnow()
+        self.db.commit()
+        with self.assertRaises(HTTPException) as ctx:
+            get_group_or_404(self.db, g.id)
+        self.assertEqual(ctx.exception.status_code, 404)
+
+    def test_delete_group_is_soft(self):
+        from app.routers.groups import delete_group, list_my_groups
+
+        a, b, g = self._group()
+        delete_group(g.id, current_user=a, db=self.db)
+        row = self.db.query(Group).filter(Group.id == g.id).one()
+        self.assertIsNotNone(row.deleted_at)
+        listed = list_my_groups(current_user=a, db=self.db)
+        self.assertEqual(listed, [])
+
+    def test_list_my_groups_reports_total_and_settled_at(self):
+        from app.routers.groups import list_my_groups
+
+        a, b, g = self._group()
+        self._expense(g, a, a, b, "10.00", "5.00", "5.00")
+        listed = list_my_groups(current_user=a, db=self.db)
+        self.assertEqual(len(listed), 1)
+        self.assertEqual(listed[0].total, 10.0)
+        self.assertIsNone(listed[0].settled_at)
+
 
 if __name__ == "__main__":
     unittest.main()
