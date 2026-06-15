@@ -192,8 +192,12 @@ def mark_paid(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    get_group_or_404(db, group_id)
+    group = get_group_or_404(db, group_id)
     require_membership(db, group_id, current_user.id)
+    if group.settled_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Group is already settled"
+        )
 
     settlement = (
         db.query(Settlement)

@@ -184,6 +184,37 @@ class SettleArchiveTest(unittest.TestCase):
             delete_expense(g.id, e.id, current_user=a, db=self.db)
         self.assertEqual(ctx.exception.status_code, 400)
 
+    def test_join_and_preview_reject_soft_deleted_group(self):
+        from fastapi import HTTPException
+        from app.routers.groups import delete_group, preview_invite, join_group
+        from app.models.user import User
+
+        a, b, g = self._group()
+        token = g.invite_token
+        delete_group(g.id, current_user=a, db=self.db)
+
+        c = User(phone_number="+15550000003", username="C")
+        self.db.add(c)
+        self.db.commit()
+
+        with self.assertRaises(HTTPException) as p:
+            preview_invite(token, current_user=c, db=self.db)
+        self.assertEqual(p.exception.status_code, 404)
+        with self.assertRaises(HTTPException) as j:
+            join_group(token, current_user=c, db=self.db)
+        self.assertEqual(j.exception.status_code, 404)
+
+    def test_mark_paid_blocked_when_settled(self):
+        from fastapi import HTTPException
+        from app.routers.settlements import confirm_settlement, mark_paid
+
+        a, b, g = self._group()
+        self._expense(g, a, a, b, "10.00", "5.00", "5.00")
+        confirm_settlement(g.id, current_user=a, db=self.db)
+        with self.assertRaises(HTTPException) as ctx:
+            mark_paid(g.id, "draft_anything", current_user=a, db=self.db)
+        self.assertEqual(ctx.exception.status_code, 400)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -174,7 +174,11 @@ def preview_invite(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    group = db.query(Group).filter(Group.invite_token == invite_token).first()
+    group = (
+        db.query(Group)
+        .filter(Group.invite_token == invite_token, Group.deleted_at.is_(None))
+        .first()
+    )
     if group is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Invalid invite link"
@@ -208,7 +212,11 @@ def join_group(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    group = db.query(Group).filter(Group.invite_token == invite_token).first()
+    group = (
+        db.query(Group)
+        .filter(Group.invite_token == invite_token, Group.deleted_at.is_(None))
+        .first()
+    )
     if group is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Invalid invite link"
