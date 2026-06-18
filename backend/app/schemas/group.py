@@ -49,3 +49,16 @@ class InvitePreview(BaseModel):
     max_members: int
     created_by_username: str | None
     is_member: bool
+
+
+class GroupInviteCreate(BaseModel):
+    group_id: str
+    phone_number: str = Field(min_length=3, max_length=20)
+
+
+class GroupInvitationOut(BaseModel):
+    id: str
+    group_id: str
+    group_name: str
+    invited_by_username: str | None
+    created_at: datetime
