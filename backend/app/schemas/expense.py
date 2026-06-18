@@ -28,7 +28,7 @@ class SplitOut(BaseModel):
 
 class ExpenseOut(BaseModel):
     id: str
-    group_id: str
+    group_id: str | None
     title: str
     amount: float
     currency: str

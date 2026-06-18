@@ -18,7 +18,9 @@ class Expense(Base):
     __tablename__ = "expenses"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
-    group_id: Mapped[str] = mapped_column(String(36), ForeignKey("groups.id"))
+    group_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("groups.id"), nullable=True
+    )
     paid_by: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
     title: Mapped[str] = mapped_column(String(100), nullable=False)
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
@@ -51,7 +53,9 @@ class Settlement(Base):
     __tablename__ = "settlements"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
-    group_id: Mapped[str] = mapped_column(String(36), ForeignKey("groups.id"))
+    group_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("groups.id"), nullable=True
+    )
     from_user: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
     to_user: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
