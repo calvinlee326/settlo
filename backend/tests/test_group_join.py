@@ -78,3 +78,24 @@ class GroupJoinTest(unittest.TestCase):
             "/api/groups/join/ABCDEF", headers=self._auth(self.joiner)
         )
         self.assertEqual(res.status_code, 400)
+
+    def test_rejoin_is_idempotent(self):
+        res = self.client.post(
+            "/api/groups/join/ABCDEF", headers=self._auth(self.owner)
+        )
+        self.assertEqual(res.status_code, 200)
+        with self.Session() as s:
+            count = s.query(Membership).filter(
+                Membership.group_id == self.group.id
+            ).count()
+        self.assertEqual(count, 1)
+
+    def test_join_full_group_blocked(self):
+        with self.Session() as s:
+            g = s.query(Group).filter(Group.id == self.group.id).one()
+            g.max_members = 1
+            s.commit()
+        res = self.client.post(
+            "/api/groups/join/ABCDEF", headers=self._auth(self.joiner)
+        )
+        self.assertEqual(res.status_code, 400)
