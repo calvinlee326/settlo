@@ -81,7 +81,7 @@ export default function HomePage() {
       )}
       {loading ? (
         <SkeletonList count={3} />
-      ) : groups.length === 0 && !error ? (
+      ) : activeGroups.length === 0 && !error ? (
         <div className="space-y-4 rounded-glass border border-dashed border-white/15 bg-white/[0.03] p-6 text-center">
           <div>
             <p className="text-[17px] font-semibold text-white">Welcome to Settlo</p>
