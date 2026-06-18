@@ -7,12 +7,14 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.core.config import settings
 from app.core.security import get_current_user
+from app.services import friends as friends_svc
 from app.database import get_db
 from app.models.expense import Expense, ExpenseSplit, Settlement, SplitType
 from app.models.group import Group, Membership
 from app.models.user import User, utcnow
 from app.services.settlement import equal_split
 from app.schemas.group import (
+    AddMemberRequest,
     GroupCreate,
     GroupDetail,
     GroupOut,
@@ -323,6 +325,25 @@ def get_invite(
     group = get_group_or_404(db, group_id)
     require_membership(db, group_id, current_user.id)
     return InviteOut(invite_token=group.invite_token)
+
+
+@router.post("/{group_id}/members", response_model=GroupDetail)
+def add_member(
+    group_id: str,
+    body: AddMemberRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    group = get_group_or_404(db, group_id)
+    require_membership(db, group_id, current_user.id)
+    if not friends_svc.are_friends(db, current_user.id, body.user_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only add your friends",
+        )
+    _add_member(db, group, body.user_id)
+    db.commit()
+    return _group_detail(db, group)
 
 
 @router.delete(

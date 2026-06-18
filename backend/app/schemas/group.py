@@ -33,6 +33,10 @@ class GroupDetail(GroupOut):
     members: list[MemberOut] = []
 
 
+class AddMemberRequest(BaseModel):
+    user_id: str
+
+
 class InviteOut(BaseModel):
     invite_token: str
 

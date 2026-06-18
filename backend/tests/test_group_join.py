@@ -16,6 +16,7 @@ from app.core.security import create_access_token
 from app.database import Base, get_db
 from app.main import app
 from app.models import *  # noqa: F401,F403
+from app.models.friendship import Friendship, FriendshipStatus
 from app.models.group import Group, Membership
 from app.models.user import User, utcnow
 
@@ -99,6 +100,38 @@ class GroupJoinTest(unittest.TestCase):
             "/api/groups/join/ABCDEF", headers=self._auth(self.joiner)
         )
         self.assertEqual(res.status_code, 400)
+
+
+class AddFriendMemberTest(GroupJoinTest):
+    def _befriend(self, a, b):
+        self.db.add(
+            Friendship(
+                requester_id=a.id, addressee_id=b.id, status=FriendshipStatus.ACCEPTED
+            )
+        )
+        self.db.commit()
+
+    def test_add_friend_to_group(self):
+        self._befriend(self.owner, self.joiner)
+        res = self.client.post(
+            f"/api/groups/{self.group.id}/members",
+            json={"user_id": self.joiner.id},
+            headers=self._auth(self.owner),
+        )
+        self.assertEqual(res.status_code, 200)
+        with self.Session() as s:
+            count = s.query(Membership).filter(
+                Membership.group_id == self.group.id
+            ).count()
+        self.assertEqual(count, 2)
+
+    def test_add_non_friend_rejected(self):
+        res = self.client.post(
+            f"/api/groups/{self.group.id}/members",
+            json={"user_id": self.joiner.id},
+            headers=self._auth(self.owner),
+        )
+        self.assertEqual(res.status_code, 403)
 
 
 class ShortCodeTest(GroupJoinTest):
