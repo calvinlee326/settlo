@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -5,7 +7,7 @@ from app.core.security import get_current_user
 from app.database import get_db
 from app.models.friendship import Friendship, FriendshipStatus
 from app.models.user import User, utcnow
-from app.schemas.friend import FriendRequestCreate, FriendRequestOut
+from app.schemas.friend import FriendOut, FriendRequestCreate, FriendRequestOut
 from app.services import friends as friends_svc
 
 router = APIRouter(prefix="/api/friends", tags=["friends"])
@@ -120,5 +122,45 @@ def decline_request(
     db: Session = Depends(get_db),
 ):
     friendship = _get_incoming_or_404(db, friendship_id, current_user.id)
+    db.delete(friendship)
+    db.commit()
+
+
+@router.get("", response_model=list[FriendOut])
+def list_friends(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    friend_ids = friends_svc.accepted_friend_ids(db, current_user.id)
+    if not friend_ids:
+        return []
+    users = db.query(User).filter(User.id.in_(friend_ids)).all()
+    return [
+        FriendOut(
+            id=u.id,
+            username=u.username,
+            phone_number=u.phone_number,
+            net_balance=float(friends_svc.friend_balance(db, current_user.id, u.id)),
+        )
+        for u in users
+    ]
+
+
+@router.delete("/{friend_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_friend(
+    friend_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    friendship = friends_svc.get_friendship(db, current_user.id, friend_id)
+    if friendship is None or friendship.status != FriendshipStatus.ACCEPTED:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Friend not found"
+        )
+    if friends_svc.friend_balance(db, current_user.id, friend_id) != Decimal("0.00"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Settle the balance before removing this friend",
+        )
     db.delete(friendship)
     db.commit()

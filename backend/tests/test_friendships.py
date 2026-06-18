@@ -226,5 +226,64 @@ class FriendRequestApiTest(unittest.TestCase):
         self.assertEqual(self.db.query(Friendship).count(), 0)
 
 
+class FriendListApiTest(unittest.TestCase):
+    def setUp(self):
+        self.engine = create_engine(
+            "sqlite:///:memory:",
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
+        Base.metadata.create_all(bind=self.engine)
+        self.Session = sessionmaker(
+            bind=self.engine, autocommit=False, autoflush=False
+        )
+        self.db = self.Session()
+        self.a = User(phone_number="+15550000001", username="A")
+        self.b = User(phone_number="+15550000002", username="B")
+        self.db.add_all([self.a, self.b])
+        self.db.flush()
+        self.db.add(
+            Friendship(
+                requester_id=self.a.id,
+                addressee_id=self.b.id,
+                status=FriendshipStatus.ACCEPTED,
+            )
+        )
+        self.db.commit()
+
+        def override_get_db():
+            db = self.Session()
+            try:
+                yield db
+            finally:
+                db.close()
+
+        app.dependency_overrides[get_db] = override_get_db
+        self.client = TestClient(app)
+
+    def tearDown(self):
+        app.dependency_overrides.clear()
+        self.db.close()
+        self.engine.dispose()
+
+    def _auth(self, user):
+        return {"Authorization": f"Bearer {create_access_token(user.id)}"}
+
+    def test_list_friends(self):
+        res = self.client.get("/api/friends", headers=self._auth(self.a))
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["id"], self.b.id)
+        self.assertEqual(data[0]["net_balance"], 0.0)
+
+    def test_remove_friend_when_settled(self):
+        res = self.client.delete(
+            f"/api/friends/{self.b.id}", headers=self._auth(self.a)
+        )
+        self.assertEqual(res.status_code, 204)
+        self.assertEqual(self.db.query(Friendship).count(), 0)
+
+
 if __name__ == "__main__":
     unittest.main()
