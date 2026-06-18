@@ -5,6 +5,14 @@ import { useIsAuthenticated } from '../store/authStore';
 import Button from '../components/Button';
 import ErrorMessage from '../components/ErrorMessage';
 
+function formatPhone(value) {
+  let d = value.replace(/\D/g, '');
+  if (d.length === 11 && d.startsWith('1')) d = d.slice(1);
+  d = d.slice(0, 10);
+  const parts = [d.slice(0, 3), d.slice(3, 6), d.slice(6, 10)].filter(Boolean);
+  return parts.join('-');
+}
+
 export default function LoginPage() {
   const [phone, setPhone] = useState('');
   const [error, setError] = useState('');
@@ -61,9 +69,9 @@ export default function LoginPage() {
               id="phone"
               type="tel"
               autoComplete="tel"
-              placeholder="(909) 555-0101"
+              placeholder="909-555-0101"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) => setPhone(formatPhone(e.target.value))}
               className="input-glass"
             />
           </div>
