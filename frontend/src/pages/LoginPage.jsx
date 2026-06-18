@@ -4,6 +4,7 @@ import api from '../api/axios';
 import { useIsAuthenticated } from '../store/authStore';
 import Button from '../components/Button';
 import ErrorMessage from '../components/ErrorMessage';
+import { formatPhone } from '../lib/phone';
 
 export default function LoginPage() {
   const [phone, setPhone] = useState('');
@@ -60,10 +61,11 @@ export default function LoginPage() {
             <input
               id="phone"
               type="tel"
+              inputMode="numeric"
               autoComplete="tel"
-              placeholder="(909) 555-0101"
+              placeholder="909-555-0101"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) => setPhone(formatPhone(e.target.value))}
               className="input-glass"
             />
           </div>

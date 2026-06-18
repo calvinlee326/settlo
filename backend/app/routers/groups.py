@@ -1,3 +1,4 @@
+import secrets
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -6,12 +7,14 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.core.config import settings
 from app.core.security import get_current_user
+from app.services import friends as friends_svc
 from app.database import get_db
 from app.models.expense import Expense, ExpenseSplit, Settlement, SplitType
 from app.models.group import Group, Membership
 from app.models.user import User, utcnow
 from app.services.settlement import equal_split
 from app.schemas.group import (
+    AddMemberRequest,
     GroupCreate,
     GroupDetail,
     GroupOut,
@@ -21,6 +24,24 @@ from app.schemas.group import (
 )
 
 router = APIRouter(prefix="/api/groups", tags=["groups"])
+
+INVITE_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
+INVITE_CODE_LENGTH = 6
+
+
+def _generate_code() -> str:
+    return "".join(secrets.choice(INVITE_CODE_ALPHABET) for _ in range(INVITE_CODE_LENGTH))
+
+
+def _unique_invite_code(db: Session) -> str:
+    for _ in range(10):
+        code = _generate_code()
+        if not db.query(Group).filter(Group.invite_token == code).first():
+            return code
+    raise HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        detail="Could not generate an invite code",
+    )
 
 
 def get_group_or_404(db: Session, group_id: str) -> Group:
@@ -48,6 +69,44 @@ def require_membership(db: Session, group_id: str, user_id: str) -> Membership:
             detail="You are not a member of this group",
         )
     return membership
+
+
+def _add_member(db: Session, group: Group, user_id: str) -> None:
+    existing = (
+        db.query(Membership)
+        .filter(Membership.group_id == group.id, Membership.user_id == user_id)
+        .first()
+    )
+    if existing:
+        return
+    if group.settled_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Group is already settled"
+        )
+    member_count = (
+        db.query(Membership).filter(Membership.group_id == group.id).count()
+    )
+    if member_count >= group.max_members:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Group is full"
+        )
+    db.add(Membership(user_id=user_id, group_id=group.id))
+    db.flush()
+    member_ids = [
+        m.user_id
+        for m in db.query(Membership).filter(Membership.group_id == group.id).all()
+    ]
+    equal_expenses = (
+        db.query(Expense)
+        .filter(Expense.group_id == group.id, Expense.split_type == SplitType.EQUAL)
+        .all()
+    )
+    for e in equal_expenses:
+        db.query(ExpenseSplit).filter(ExpenseSplit.expense_id == e.id).delete(
+            synchronize_session=False
+        )
+        for uid, amount in equal_split(Decimal(e.amount), member_ids):
+            db.add(ExpenseSplit(expense_id=e.id, user_id=uid, amount=amount))
 
 
 def _member_out(membership: Membership) -> MemberOut:
@@ -100,6 +159,7 @@ def create_group(
         name=body.name.strip(),
         description=body.description,
         created_by=current_user.id,
+        invite_token=_unique_invite_code(db),
     )
     db.add(group)
     db.flush()
@@ -224,45 +284,7 @@ def join_group(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Invalid invite link"
         )
-    existing = (
-        db.query(Membership)
-        .filter(
-            Membership.group_id == group.id, Membership.user_id == current_user.id
-        )
-        .first()
-    )
-    if existing:
-        return _group_detail(db, group)
-    member_count = (
-        db.query(Membership).filter(Membership.group_id == group.id).count()
-    )
-    if member_count >= group.max_members:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Group is full"
-        )
-    db.add(Membership(user_id=current_user.id, group_id=group.id))
-    db.flush()
-    if group.settled_at is None:
-        member_ids = [
-            m.user_id
-            for m in db.query(Membership)
-            .filter(Membership.group_id == group.id)
-            .all()
-        ]
-        equal_expenses = (
-            db.query(Expense)
-            .filter(
-                Expense.group_id == group.id,
-                Expense.split_type == SplitType.EQUAL,
-            )
-            .all()
-        )
-        for e in equal_expenses:
-            db.query(ExpenseSplit).filter(
-                ExpenseSplit.expense_id == e.id
-            ).delete(synchronize_session=False)
-            for uid, amount in equal_split(Decimal(e.amount), member_ids):
-                db.add(ExpenseSplit(expense_id=e.id, user_id=uid, amount=amount))
+    _add_member(db, group, current_user.id)
     db.commit()
     return _group_detail(db, group)
 
@@ -303,6 +325,25 @@ def get_invite(
     group = get_group_or_404(db, group_id)
     require_membership(db, group_id, current_user.id)
     return InviteOut(invite_token=group.invite_token)
+
+
+@router.post("/{group_id}/members", response_model=GroupDetail)
+def add_member(
+    group_id: str,
+    body: AddMemberRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    group = get_group_or_404(db, group_id)
+    require_membership(db, group_id, current_user.id)
+    if not friends_svc.are_friends(db, current_user.id, body.user_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only add your friends",
+        )
+    _add_member(db, group, body.user_id)
+    db.commit()
+    return _group_detail(db, group)
 
 
 @router.delete(

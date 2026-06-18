@@ -9,6 +9,9 @@ import GroupDetailPage from './pages/GroupDetailPage';
 import NewExpensePage from './pages/NewExpensePage';
 import SettlementPage from './pages/SettlementPage';
 import InvitePage from './pages/InvitePage';
+import FriendsPage from './pages/FriendsPage';
+import NewDirectExpensePage from './pages/NewDirectExpensePage';
+import SettingsPage from './pages/SettingsPage';
 
 function Layout({ children }) {
   return (
@@ -97,6 +100,36 @@ export default function App() {
           <ProtectedRoute>
             <Layout>
               <InvitePage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/friends"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <FriendsPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/friends/expenses/new"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <NewDirectExpensePage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <SettingsPage />
             </Layout>
           </ProtectedRoute>
         }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { QRCodeSVG } from 'qrcode.react';
 import api from '../api/axios';
 import useAuthStore from '../store/authStore';
 import Avatar from '../components/Avatar';
@@ -7,6 +8,7 @@ import Button from '../components/Button';
 import ErrorMessage from '../components/ErrorMessage';
 import ExpenseItem from '../components/ExpenseItem';
 import { SkeletonList } from '../components/LoadingSpinner';
+import { formatPhone } from '../lib/phone';
 
 export default function GroupDetailPage() {
   const { id } = useParams();
@@ -17,7 +19,49 @@ export default function GroupDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [inviteLink, setInviteLink] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
   const [copied, setCopied] = useState(false);
+  const [friends, setFriends] = useState([]);
+  const [invitePhone, setInvitePhone] = useState('');
+  const [inviteNotice, setInviteNotice] = useState('');
+
+  useEffect(() => {
+    api
+      .get('/friends')
+      .then(({ data }) => setFriends(data))
+      .catch(() => {});
+  }, []);
+
+  const sendPhoneInvite = async () => {
+    setError('');
+    setInviteNotice('');
+    let digits = invitePhone.replace(/\D/g, '');
+    if (digits.length === 11 && digits.startsWith('1')) digits = digits.slice(1);
+    if (digits.length !== 10) {
+      setError('Enter a valid 10-digit US phone number');
+      return;
+    }
+    try {
+      await api.post('/group-invitations', {
+        group_id: id,
+        phone_number: `+1${digits}`,
+      });
+      setInvitePhone('');
+      setInviteNotice('Invite sent');
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to send invite');
+    }
+  };
+
+  const addFriend = async (friendId) => {
+    setError('');
+    try {
+      const { data } = await api.post(`/groups/${id}/members`, { user_id: friendId });
+      setGroup(data);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to add friend');
+    }
+  };
 
   const load = useCallback(async () => {
     try {
@@ -41,6 +85,7 @@ export default function GroupDetailPage() {
   const handleInvite = async () => {
     try {
       const { data } = await api.get(`/groups/${id}/invite`);
+      setInviteCode(data.invite_token);
       setInviteLink(`${window.location.origin}/invite/${data.invite_token}`);
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to get invite link');
@@ -131,6 +176,27 @@ export default function GroupDetailPage() {
         </div>
       </div>
 
+      {!isSettled && (() => {
+        const memberIds = new Set(group.members.map((m) => m.id));
+        const addable = friends.filter((f) => !memberIds.has(f.id));
+        if (addable.length === 0) return null;
+        return (
+          <div className="glass space-y-2 p-4">
+            <p className="text-[13px] font-medium text-white/55">Add friends</p>
+            {addable.map((f) => (
+              <div key={f.id} className="flex items-center justify-between">
+                <span className="text-[15px] text-white/85">
+                  {f.username || f.phone_number}
+                </span>
+                <Button variant="secondary" onClick={() => addFriend(f.id)}>
+                  Add
+                </Button>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
       <ErrorMessage message={error} />
 
       {isSettled && (
@@ -187,22 +253,52 @@ export default function GroupDetailPage() {
       {inviteLink && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
           <div className="glass-strong w-full max-w-sm space-y-4 p-6">
-            <h2 className="text-[17px] font-semibold text-white">Invite Link</h2>
+            <h2 className="text-[17px] font-semibold text-white">Invite to group</h2>
+            <div className="flex flex-col items-center gap-3">
+              <div className="rounded-2xl bg-white p-3">
+                <QRCodeSVG value={inviteLink} size={160} />
+              </div>
+              <p className="text-[13px] text-white/55">Scan to join, or share the code</p>
+              <div className="text-2xl font-bold tracking-[0.3em] text-white">
+                {inviteCode}
+              </div>
+            </div>
             <input
               readOnly
               value={inviteLink}
               className="w-full rounded-xl bg-white/10 px-3 py-2 text-[13px] text-white/80 outline-none"
               onFocus={(e) => e.target.select()}
             />
+            <div className="space-y-2 border-t border-white/10 pt-3">
+              <p className="text-[13px] font-medium text-white/55">Invite by phone</p>
+              <div className="flex gap-2">
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  placeholder="909-555-0101"
+                  value={invitePhone}
+                  onChange={(e) => setInvitePhone(formatPhone(e.target.value))}
+                  className="min-w-0 flex-1 rounded-xl bg-white/10 px-3 py-2 text-[13px] text-white placeholder-white/30 outline-none"
+                />
+                <button
+                  onClick={sendPhoneInvite}
+                  disabled={!invitePhone.trim()}
+                  className="shrink-0 rounded-xl bg-violet-500 px-4 py-2 text-[13px] font-medium text-white transition-opacity hover:opacity-80 disabled:opacity-40"
+                >
+                  Invite
+                </button>
+              </div>
+              {inviteNotice && <p className="text-[12px] text-emerald-400">{inviteNotice}</p>}
+            </div>
             <div className="flex gap-3">
               <button
                 onClick={handleCopy}
                 className="flex-1 rounded-xl bg-violet-500 py-2 text-[14px] font-medium text-white transition-opacity hover:opacity-80"
               >
-                {copied ? 'Copied!' : 'Copy'}
+                {copied ? 'Copied!' : 'Copy link'}
               </button>
               <button
-                onClick={() => { setInviteLink(''); setCopied(false); }}
+                onClick={() => { setInviteLink(''); setCopied(false); setInviteNotice(''); }}
                 className="flex-1 rounded-xl bg-white/10 py-2 text-[14px] font-medium text-white/70 transition-opacity hover:opacity-80"
               >
                 Close
