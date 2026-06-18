@@ -9,6 +9,14 @@ import ErrorMessage from '../components/ErrorMessage';
 import ExpenseItem from '../components/ExpenseItem';
 import { SkeletonList } from '../components/LoadingSpinner';
 
+function formatPhone(value) {
+  let d = value.replace(/\D/g, '');
+  if (d.length === 11 && d.startsWith('1')) d = d.slice(1);
+  d = d.slice(0, 10);
+  const parts = [d.slice(0, 3), d.slice(3, 6), d.slice(6, 10)].filter(Boolean);
+  return parts.join('-');
+}
+
 export default function GroupDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -21,6 +29,8 @@ export default function GroupDetailPage() {
   const [inviteCode, setInviteCode] = useState('');
   const [copied, setCopied] = useState(false);
   const [friends, setFriends] = useState([]);
+  const [invitePhone, setInvitePhone] = useState('');
+  const [inviteNotice, setInviteNotice] = useState('');
 
   useEffect(() => {
     api
@@ -28,6 +38,27 @@ export default function GroupDetailPage() {
       .then(({ data }) => setFriends(data))
       .catch(() => {});
   }, []);
+
+  const sendPhoneInvite = async () => {
+    setError('');
+    setInviteNotice('');
+    let digits = invitePhone.replace(/\D/g, '');
+    if (digits.length === 11 && digits.startsWith('1')) digits = digits.slice(1);
+    if (digits.length !== 10) {
+      setError('Enter a valid 10-digit US phone number');
+      return;
+    }
+    try {
+      await api.post('/group-invitations', {
+        group_id: id,
+        phone_number: `+1${digits}`,
+      });
+      setInvitePhone('');
+      setInviteNotice('Invite sent');
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to send invite');
+    }
+  };
 
   const addFriend = async (friendId) => {
     setError('');
@@ -245,6 +276,27 @@ export default function GroupDetailPage() {
               className="w-full rounded-xl bg-white/10 px-3 py-2 text-[13px] text-white/80 outline-none"
               onFocus={(e) => e.target.select()}
             />
+            <div className="space-y-2 border-t border-white/10 pt-3">
+              <p className="text-[13px] font-medium text-white/55">Invite by phone</p>
+              <div className="flex gap-2">
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  placeholder="909-555-0101"
+                  value={invitePhone}
+                  onChange={(e) => setInvitePhone(formatPhone(e.target.value))}
+                  className="min-w-0 flex-1 rounded-xl bg-white/10 px-3 py-2 text-[13px] text-white placeholder-white/30 outline-none"
+                />
+                <button
+                  onClick={sendPhoneInvite}
+                  disabled={!invitePhone.trim()}
+                  className="shrink-0 rounded-xl bg-violet-500 px-4 py-2 text-[13px] font-medium text-white transition-opacity hover:opacity-80 disabled:opacity-40"
+                >
+                  Invite
+                </button>
+              </div>
+              {inviteNotice && <p className="text-[12px] text-emerald-400">{inviteNotice}</p>}
+            </div>
             <div className="flex gap-3">
               <button
                 onClick={handleCopy}

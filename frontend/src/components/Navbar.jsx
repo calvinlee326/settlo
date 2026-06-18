@@ -9,6 +9,7 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [requestCount, setRequestCount] = useState(0);
+  const [inviteCount, setInviteCount] = useState(0);
   const menuRef = useRef(null);
 
   useEffect(() => {
@@ -28,6 +29,22 @@ export default function Navbar() {
         .catch(() => {});
     fetchCount();
     const id = setInterval(fetchCount, 30000);
+    return () => {
+      active = false;
+      clearInterval(id);
+    };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    const fetchInvites = () =>
+      api
+        .get('/group-invitations')
+        .then(({ data }) => active && setInviteCount(data.length))
+        .catch(() => {});
+    fetchInvites();
+    const id = setInterval(fetchInvites, 30000);
     return () => {
       active = false;
       clearInterval(id);
@@ -61,9 +78,14 @@ export default function Navbar() {
       <div className="mx-auto flex h-full max-w-[480px] items-center justify-between px-4">
         <Link
           to="/"
-          className="text-lg font-semibold tracking-wide text-white"
+          className="relative text-lg font-semibold tracking-wide text-white"
         >
           Settlo
+          {inviteCount > 0 && (
+            <span className="absolute -right-3 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white shadow-[0_0_8px_rgba(239,68,68,0.5)]">
+              {inviteCount > 99 ? '99+' : inviteCount}
+            </span>
+          )}
         </Link>
         <div className="flex items-center gap-4">
           <Link
