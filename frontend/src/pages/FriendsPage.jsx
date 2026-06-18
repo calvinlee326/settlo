@@ -5,6 +5,14 @@ import Button from '../components/Button';
 import ErrorMessage from '../components/ErrorMessage';
 import { SkeletonList } from '../components/LoadingSpinner';
 
+function formatPhone(value) {
+  let d = value.replace(/\D/g, '');
+  if (d.length === 11 && d.startsWith('1')) d = d.slice(1);
+  d = d.slice(0, 10);
+  const parts = [d.slice(0, 3), d.slice(3, 6), d.slice(6, 10)].filter(Boolean);
+  return parts.join('-');
+}
+
 export default function FriendsPage() {
   const [friends, setFriends] = useState([]);
   const [requests, setRequests] = useState([]);
@@ -94,7 +102,7 @@ export default function FriendsPage() {
             type="tel"
             placeholder="+1 xxx-xxx-xxxx"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            onChange={(e) => setPhone(formatPhone(e.target.value))}
             onKeyDown={(e) => e.key === 'Enter' && addFriend()}
             className="min-w-0 flex-1 rounded-xl bg-white/10 px-3 py-2 text-[14px] text-white placeholder-white/30 outline-none"
           />
