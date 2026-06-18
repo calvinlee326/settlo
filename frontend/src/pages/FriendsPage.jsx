@@ -31,10 +31,17 @@ export default function FriendsPage() {
   const addFriend = async () => {
     setError('');
     setNotice('');
-    const val = phone.trim();
-    if (!val) return;
+    if (!phone.trim()) return;
+    let digits = phone.replace(/\D/g, '');
+    if (digits.length === 11 && digits.startsWith('1')) {
+      digits = digits.slice(1);
+    }
+    if (digits.length !== 10) {
+      setError('Enter a valid 10-digit US phone number');
+      return;
+    }
     try {
-      await api.post('/friends/requests', { phone_number: val });
+      await api.post('/friends/requests', { phone_number: `+1${digits}` });
       setPhone('');
       setNotice('Request sent');
     } catch (err) {
@@ -85,7 +92,7 @@ export default function FriendsPage() {
         <div className="flex gap-2">
           <input
             type="tel"
-            placeholder="Phone number e.g. +15550000002"
+            placeholder="+1 xxx-xxx-xxxx"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addFriend()}
