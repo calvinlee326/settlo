@@ -544,26 +544,6 @@ Add state and a loader. Inside the component, add:
   const addFriend = async (friendId) => {
     setError('');
     try {
-      const { data } = await api.get(`/groups/${id}`);
-      // reload after add below
-    } catch {
-      // ignore
-    }
-    try {
-      const { data } = await api.post(`/groups/${id}/members`, { user_id: friendId });
-      setGroup(data);
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to add friend');
-    }
-  };
-```
-
-Simplify `addFriend` to just the add + setGroup (drop the redundant GET):
-
-```jsx
-  const addFriend = async (friendId) => {
-    setError('');
-    try {
       const { data } = await api.post(`/groups/${id}/members`, { user_id: friendId });
       setGroup(data);
     } catch (err) {
