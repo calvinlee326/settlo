@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.routers import auth, expenses, groups, settlements
+from app.routers import auth, expenses, friends, groups, settlements
 
 logging.basicConfig(level=logging.INFO)
 
@@ -26,6 +26,7 @@ app.include_router(auth.router)
 app.include_router(groups.router)
 app.include_router(expenses.router)
 app.include_router(settlements.router)
+app.include_router(friends.router)
 
 
 @app.get("/api/health")
