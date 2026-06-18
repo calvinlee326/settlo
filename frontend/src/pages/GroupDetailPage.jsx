@@ -20,6 +20,24 @@ export default function GroupDetailPage() {
   const [inviteLink, setInviteLink] = useState('');
   const [inviteCode, setInviteCode] = useState('');
   const [copied, setCopied] = useState(false);
+  const [friends, setFriends] = useState([]);
+
+  useEffect(() => {
+    api
+      .get('/friends')
+      .then(({ data }) => setFriends(data))
+      .catch(() => {});
+  }, []);
+
+  const addFriend = async (friendId) => {
+    setError('');
+    try {
+      const { data } = await api.post(`/groups/${id}/members`, { user_id: friendId });
+      setGroup(data);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to add friend');
+    }
+  };
 
   const load = useCallback(async () => {
     try {
@@ -133,6 +151,27 @@ export default function GroupDetailPage() {
           </button>
         </div>
       </div>
+
+      {!isSettled && (() => {
+        const memberIds = new Set(group.members.map((m) => m.id));
+        const addable = friends.filter((f) => !memberIds.has(f.id));
+        if (addable.length === 0) return null;
+        return (
+          <div className="glass space-y-2 p-4">
+            <p className="text-[13px] font-medium text-white/55">Add friends</p>
+            {addable.map((f) => (
+              <div key={f.id} className="flex items-center justify-between">
+                <span className="text-[15px] text-white/85">
+                  {f.username || f.phone_number}
+                </span>
+                <Button variant="secondary" onClick={() => addFriend(f.id)}>
+                  Add
+                </Button>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       <ErrorMessage message={error} />
 
