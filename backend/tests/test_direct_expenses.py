@@ -149,3 +149,61 @@ class DirectExpenseApiTest(unittest.TestCase):
         )
         self.assertEqual(res.status_code, 200)
         self.assertEqual(len(res.json()), 1)
+
+    def test_paid_by_not_in_participants_rejected(self):
+        res = self.client.post(
+            "/api/direct-expenses",
+            json={
+                "title": "Coffee",
+                "amount": "10.00",
+                "paid_by": self.b.id,
+                "split_type": "EQUAL",
+                "participant_ids": [self.a.id, self.c.id],
+            },
+            headers=self._auth(self.a),
+        )
+        self.assertEqual(res.status_code, 400)
+
+    def test_delete_by_creator(self):
+        create_res = self.client.post(
+            "/api/direct-expenses",
+            json={
+                "title": "Dinner",
+                "amount": "20.00",
+                "paid_by": self.a.id,
+                "split_type": "EQUAL",
+                "participant_ids": [self.a.id, self.b.id],
+            },
+            headers=self._auth(self.a),
+        )
+        self.assertEqual(create_res.status_code, 201)
+        expense_id = create_res.json()["id"]
+        del_res = self.client.delete(
+            f"/api/direct-expenses/{expense_id}", headers=self._auth(self.a)
+        )
+        self.assertEqual(del_res.status_code, 204)
+
+    def test_delete_by_non_creator_forbidden(self):
+        create_res = self.client.post(
+            "/api/direct-expenses",
+            json={
+                "title": "Dinner",
+                "amount": "20.00",
+                "paid_by": self.a.id,
+                "split_type": "EQUAL",
+                "participant_ids": [self.a.id, self.b.id],
+            },
+            headers=self._auth(self.a),
+        )
+        self.assertEqual(create_res.status_code, 201)
+        expense_id = create_res.json()["id"]
+        del_res = self.client.delete(
+            f"/api/direct-expenses/{expense_id}", headers=self._auth(self.b)
+        )
+        self.assertEqual(del_res.status_code, 403)
+
+    def test_delete_nonexistent_returns_404(self):
+        res = self.client.delete(
+            "/api/direct-expenses/nonexistent", headers=self._auth(self.a)
+        )
+        self.assertEqual(res.status_code, 404)

@@ -23,7 +23,12 @@ def create_direct_expense(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    participants = set(body.participant_ids) | {body.paid_by}
+    participants = set(body.participant_ids)
+    if body.paid_by not in participants:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Payer must be a participant",
+        )
     others = participants - {current_user.id}
     for uid in others:
         if not friends_svc.are_friends(db, current_user.id, uid):
@@ -31,11 +36,6 @@ def create_direct_expense(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="All participants must be your friends",
             )
-    if body.paid_by not in participants:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Payer must be a participant",
-        )
 
     member_ids = list(participants)
     splits = _build_splits(body, member_ids)
