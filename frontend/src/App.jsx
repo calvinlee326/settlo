@@ -11,6 +11,7 @@ import SettlementPage from './pages/SettlementPage';
 import InvitePage from './pages/InvitePage';
 import FriendsPage from './pages/FriendsPage';
 import NewDirectExpensePage from './pages/NewDirectExpensePage';
+import SettingsPage from './pages/SettingsPage';
 
 function Layout({ children }) {
   return (
@@ -119,6 +120,16 @@ export default function App() {
           <ProtectedRoute>
             <Layout>
               <NewDirectExpensePage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <SettingsPage />
             </Layout>
           </ProtectedRoute>
         }
