@@ -22,6 +22,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    # Re-adds NOT NULL; fails if any direct (group_id IS NULL) expenses or
+    # settlements exist. Delete or reassign those rows before downgrading.
     with op.batch_alter_table("settlements", schema=None) as batch_op:
         batch_op.alter_column("group_id", existing_type=sa.String(36), nullable=False)
     with op.batch_alter_table("expenses", schema=None) as batch_op:
