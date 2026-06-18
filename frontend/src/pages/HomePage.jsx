@@ -82,10 +82,30 @@ export default function HomePage() {
       {loading ? (
         <SkeletonList count={3} />
       ) : groups.length === 0 && !error ? (
-        <div className="rounded-glass border border-dashed border-white/15 bg-white/[0.03] p-8 text-center">
-          <p className="text-[15px] text-white/55">
-            No groups yet. Create one to start splitting bills with friends.
-          </p>
+        <div className="space-y-4 rounded-glass border border-dashed border-white/15 bg-white/[0.03] p-6 text-center">
+          <div>
+            <p className="text-[17px] font-semibold text-white">Welcome to Settlo</p>
+            <p className="mt-1 text-[14px] text-white/55">
+              Split bills with friends and settle up with the fewest payments.
+            </p>
+          </div>
+          <ol className="mx-auto max-w-xs space-y-2 text-left text-[14px] text-white/70">
+            <li>
+              <span className="font-semibold text-violet-300">1.</span> Create a group and invite people by phone or QR code.
+            </li>
+            <li>
+              <span className="font-semibold text-violet-300">2.</span> Add expenses — split equally or with custom amounts.
+            </li>
+            <li>
+              <span className="font-semibold text-violet-300">3.</span> Settle up to see who pays whom.
+            </li>
+          </ol>
+          <Link
+            to="/groups/new"
+            className="inline-block rounded-xl bg-violet-500 px-5 py-2.5 text-[14px] font-medium text-white transition-opacity hover:opacity-80"
+          >
+            Create your first group
+          </Link>
         </div>
       ) : (
         <div className="space-y-3">

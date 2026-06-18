@@ -287,33 +287,39 @@ export default function GroupDetailPage() {
               {inviteNotice && <p className="text-[12px] text-emerald-400">{inviteNotice}</p>}
             </div>
             {(() => {
+              if (friends.length === 0) return null;
               const memberIds = new Set(group.members.map((m) => m.id));
               const addable = friends.filter((f) => !memberIds.has(f.id));
-              if (addable.length === 0) return null;
               return (
                 <div className="space-y-2 border-t border-white/10 pt-3">
                   <p className="text-[13px] font-medium text-white/55">Add a friend</p>
-                  <div className="flex gap-2">
-                    <select
-                      value={inviteFriendId}
-                      onChange={(e) => setInviteFriendId(e.target.value)}
-                      className="min-w-0 flex-1 rounded-xl bg-white/10 px-3 py-2 text-[13px] text-white outline-none"
-                    >
-                      <option value="">Select a friend</option>
-                      {addable.map((f) => (
-                        <option key={f.id} value={f.id} className="bg-zinc-900">
-                          {f.username || f.phone_number}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      onClick={() => { addFriend(inviteFriendId); setInviteFriendId(''); }}
-                      disabled={!inviteFriendId}
-                      className="shrink-0 rounded-xl bg-violet-500 px-4 py-2 text-[13px] font-medium text-white transition-opacity hover:opacity-80 disabled:opacity-40"
-                    >
-                      Add
-                    </button>
-                  </div>
+                  {addable.length === 0 ? (
+                    <p className="text-[13px] text-white/40">
+                      All your friends are already in this group.
+                    </p>
+                  ) : (
+                    <div className="flex gap-2">
+                      <select
+                        value={inviteFriendId}
+                        onChange={(e) => setInviteFriendId(e.target.value)}
+                        className="min-w-0 flex-1 rounded-xl bg-white/10 px-3 py-2 text-[13px] text-white outline-none"
+                      >
+                        <option value="">Select a friend</option>
+                        {addable.map((f) => (
+                          <option key={f.id} value={f.id} className="bg-zinc-900">
+                            {f.username || f.phone_number}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => { addFriend(inviteFriendId); setInviteFriendId(''); }}
+                        disabled={!inviteFriendId}
+                        className="shrink-0 rounded-xl bg-violet-500 px-4 py-2 text-[13px] font-medium text-white transition-opacity hover:opacity-80 disabled:opacity-40"
+                      >
+                        Add
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })()}
