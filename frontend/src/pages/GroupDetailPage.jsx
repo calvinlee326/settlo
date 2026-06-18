@@ -8,14 +8,7 @@ import Button from '../components/Button';
 import ErrorMessage from '../components/ErrorMessage';
 import ExpenseItem from '../components/ExpenseItem';
 import { SkeletonList } from '../components/LoadingSpinner';
-
-function formatPhone(value) {
-  let d = value.replace(/\D/g, '');
-  if (d.length === 11 && d.startsWith('1')) d = d.slice(1);
-  d = d.slice(0, 10);
-  const parts = [d.slice(0, 3), d.slice(3, 6), d.slice(6, 10)].filter(Boolean);
-  return parts.join('-');
-}
+import { formatPhone } from '../lib/phone';
 
 export default function GroupDetailPage() {
   const { id } = useParams();
@@ -305,7 +298,7 @@ export default function GroupDetailPage() {
                 {copied ? 'Copied!' : 'Copy link'}
               </button>
               <button
-                onClick={() => { setInviteLink(''); setCopied(false); }}
+                onClick={() => { setInviteLink(''); setCopied(false); setInviteNotice(''); }}
                 className="flex-1 rounded-xl bg-white/10 py-2 text-[14px] font-medium text-white/70 transition-opacity hover:opacity-80"
               >
                 Close
