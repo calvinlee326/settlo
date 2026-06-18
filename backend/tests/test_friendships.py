@@ -195,13 +195,30 @@ class FriendRequestApiTest(unittest.TestCase):
         self.db.refresh(f)
         self.assertEqual(f.status, FriendshipStatus.ACCEPTED)
 
-    def test_decline_deletes_request(self):
-        self.client.post(
+    def test_non_addressee_cannot_accept_or_decline(self):
+        res = self.client.post(
             "/api/friends/requests",
             json={"phone_number": self.b.phone_number},
             headers=self._auth(self.a),
         )
-        fid = self.db.query(Friendship).one().id
+        self.assertEqual(res.status_code, 201)
+        fid = res.json()["id"]
+        accept_res = self.client.post(
+            f"/api/friends/requests/{fid}/accept", headers=self._auth(self.a)
+        )
+        self.assertEqual(accept_res.status_code, 404)
+        decline_res = self.client.post(
+            f"/api/friends/requests/{fid}/decline", headers=self._auth(self.a)
+        )
+        self.assertEqual(decline_res.status_code, 404)
+
+    def test_decline_deletes_request(self):
+        res = self.client.post(
+            "/api/friends/requests",
+            json={"phone_number": self.b.phone_number},
+            headers=self._auth(self.a),
+        )
+        fid = res.json()["id"]
         res = self.client.post(
             f"/api/friends/requests/{fid}/decline", headers=self._auth(self.b)
         )
