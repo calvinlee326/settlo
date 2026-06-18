@@ -1,3 +1,4 @@
+import secrets
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -21,6 +22,24 @@ from app.schemas.group import (
 )
 
 router = APIRouter(prefix="/api/groups", tags=["groups"])
+
+INVITE_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
+INVITE_CODE_LENGTH = 6
+
+
+def _generate_code() -> str:
+    return "".join(secrets.choice(INVITE_CODE_ALPHABET) for _ in range(INVITE_CODE_LENGTH))
+
+
+def _unique_invite_code(db: Session) -> str:
+    for _ in range(10):
+        code = _generate_code()
+        if not db.query(Group).filter(Group.invite_token == code).first():
+            return code
+    raise HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        detail="Could not generate an invite code",
+    )
 
 
 def get_group_or_404(db: Session, group_id: str) -> Group:
@@ -138,6 +157,7 @@ def create_group(
         name=body.name.strip(),
         description=body.description,
         created_by=current_user.id,
+        invite_token=_unique_invite_code(db),
     )
     db.add(group)
     db.flush()

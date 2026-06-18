@@ -99,3 +99,18 @@ class GroupJoinTest(unittest.TestCase):
             "/api/groups/join/ABCDEF", headers=self._auth(self.joiner)
         )
         self.assertEqual(res.status_code, 400)
+
+
+class ShortCodeTest(GroupJoinTest):
+    def test_create_group_gets_short_code(self):
+        res = self.client.post(
+            "/api/groups/",
+            json={"name": "Beach"},
+            headers=self._auth(self.owner),
+        )
+        self.assertEqual(res.status_code, 201)
+        # The created group's code is short and from the unambiguous alphabet.
+        with self.Session() as s:
+            g = s.query(Group).filter(Group.name == "Beach").one()
+        self.assertEqual(len(g.invite_token), 6)
+        self.assertTrue(all(c in "ABCDEFGHJKMNPQRSTUVWXYZ23456789" for c in g.invite_token))
