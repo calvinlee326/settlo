@@ -35,6 +35,12 @@ export default function Navbar() {
           Settlo
         </Link>
         <div className="flex items-center gap-3">
+          <Link
+            to="/friends"
+            className="text-sm font-medium text-white/55 transition-colors hover:text-white"
+          >
+            Friends
+          </Link>
           {user && (
             <div className="flex items-center gap-2">
               <Avatar name={user.username || user.phone_number} size="sm" />
