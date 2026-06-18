@@ -1,12 +1,16 @@
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy import func
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.security import get_current_user
 from app.database import get_db
+from app.models.expense import Expense, ExpenseSplit
 from app.models.friendship import Friendship, FriendshipStatus
 from app.models.user import User, utcnow
+from app.routers.expenses import _expense_out
+from app.schemas.expense import ExpenseOut
 from app.schemas.friend import FriendOut, FriendRequestCreate, FriendRequestOut
 from app.services import friends as friends_svc
 
@@ -164,3 +168,37 @@ def remove_friend(
         )
     db.delete(friendship)
     db.commit()
+
+
+@router.get("/{friend_id}/expenses", response_model=list[ExpenseOut])
+def friend_expenses(
+    friend_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if not friends_svc.are_friends(db, current_user.id, friend_id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Friend not found"
+        )
+    # Direct expenses where both the caller and the friend appear in the splits.
+    pair_expense_ids = (
+        db.query(ExpenseSplit.expense_id)
+        .join(Expense, Expense.id == ExpenseSplit.expense_id)
+        .filter(Expense.group_id.is_(None))
+        .filter(ExpenseSplit.user_id.in_([current_user.id, friend_id]))
+        .group_by(ExpenseSplit.expense_id)
+        .having(func.count(func.distinct(ExpenseSplit.user_id)) == 2)
+        .all()
+    )
+    ids = [row[0] for row in pair_expense_ids]
+    if not ids:
+        return []
+    expenses = (
+        db.query(Expense)
+        .options(joinedload(Expense.splits).joinedload(ExpenseSplit.user))
+        .options(joinedload(Expense.payer))
+        .filter(Expense.id.in_(ids))
+        .order_by(Expense.created_at.desc())
+        .all()
+    )
+    return [_expense_out(e) for e in expenses]
