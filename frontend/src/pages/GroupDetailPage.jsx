@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { QRCodeSVG } from 'qrcode.react';
 import api from '../api/axios';
 import useAuthStore from '../store/authStore';
 import Avatar from '../components/Avatar';
@@ -17,6 +18,7 @@ export default function GroupDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [inviteLink, setInviteLink] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
   const [copied, setCopied] = useState(false);
 
   const load = useCallback(async () => {
@@ -41,6 +43,7 @@ export default function GroupDetailPage() {
   const handleInvite = async () => {
     try {
       const { data } = await api.get(`/groups/${id}/invite`);
+      setInviteCode(data.invite_token);
       setInviteLink(`${window.location.origin}/invite/${data.invite_token}`);
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to get invite link');
@@ -187,7 +190,16 @@ export default function GroupDetailPage() {
       {inviteLink && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
           <div className="glass-strong w-full max-w-sm space-y-4 p-6">
-            <h2 className="text-[17px] font-semibold text-white">Invite Link</h2>
+            <h2 className="text-[17px] font-semibold text-white">Invite to group</h2>
+            <div className="flex flex-col items-center gap-3">
+              <div className="rounded-2xl bg-white p-3">
+                <QRCodeSVG value={inviteLink} size={160} />
+              </div>
+              <p className="text-[13px] text-white/55">Scan to join, or share the code</p>
+              <div className="text-2xl font-bold tracking-[0.3em] text-white">
+                {inviteCode}
+              </div>
+            </div>
             <input
               readOnly
               value={inviteLink}
@@ -199,7 +211,7 @@ export default function GroupDetailPage() {
                 onClick={handleCopy}
                 className="flex-1 rounded-xl bg-violet-500 py-2 text-[14px] font-medium text-white transition-opacity hover:opacity-80"
               >
-                {copied ? 'Copied!' : 'Copy'}
+                {copied ? 'Copied!' : 'Copy link'}
               </button>
               <button
                 onClick={() => { setInviteLink(''); setCopied(false); }}
