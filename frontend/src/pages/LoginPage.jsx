@@ -68,6 +68,7 @@ export default function LoginPage() {
             <input
               id="phone"
               type="tel"
+              inputMode="numeric"
               autoComplete="tel"
               placeholder="909-555-0101"
               value={phone}

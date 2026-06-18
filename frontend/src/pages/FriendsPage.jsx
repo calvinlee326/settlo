@@ -100,6 +100,7 @@ export default function FriendsPage() {
         <div className="flex gap-2">
           <input
             type="tel"
+            inputMode="numeric"
             placeholder="909-555-0101"
             value={phone}
             onChange={(e) => setPhone(formatPhone(e.target.value))}
