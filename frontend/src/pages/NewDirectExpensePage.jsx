@@ -29,6 +29,11 @@ export default function NewDirectExpensePage() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Ensure paidBy is set once user is available
+  useEffect(() => {
+    if (!paidBy && user?.id) setPaidBy(user.id);
+  }, [user, paidBy]);
+
   // Participants = me + selected friends.
   const participantIds = useMemo(() => {
     const ids = [user?.id].filter(Boolean);
@@ -132,12 +137,10 @@ export default function NewDirectExpensePage() {
                 <input
                   type="checkbox"
                   checked={!!selected[f.id]}
-                  onChange={(e) =>
-                    setSelected((prev) => ({
-                      ...prev,
-                      [f.id]: e.target.checked,
-                    }))
-                  }
+                  onChange={(e) => {
+                    setSelected((prev) => ({ ...prev, [f.id]: e.target.checked }));
+                    if (!e.target.checked && paidBy === f.id) setPaidBy(user?.id);
+                  }}
                 />
                 {f.username || f.phone_number}
               </label>
