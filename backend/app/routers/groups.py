@@ -50,6 +50,44 @@ def require_membership(db: Session, group_id: str, user_id: str) -> Membership:
     return membership
 
 
+def _add_member(db: Session, group: Group, user_id: str) -> None:
+    existing = (
+        db.query(Membership)
+        .filter(Membership.group_id == group.id, Membership.user_id == user_id)
+        .first()
+    )
+    if existing:
+        return
+    if group.settled_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Group is already settled"
+        )
+    member_count = (
+        db.query(Membership).filter(Membership.group_id == group.id).count()
+    )
+    if member_count >= group.max_members:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Group is full"
+        )
+    db.add(Membership(user_id=user_id, group_id=group.id))
+    db.flush()
+    member_ids = [
+        m.user_id
+        for m in db.query(Membership).filter(Membership.group_id == group.id).all()
+    ]
+    equal_expenses = (
+        db.query(Expense)
+        .filter(Expense.group_id == group.id, Expense.split_type == SplitType.EQUAL)
+        .all()
+    )
+    for e in equal_expenses:
+        db.query(ExpenseSplit).filter(ExpenseSplit.expense_id == e.id).delete(
+            synchronize_session=False
+        )
+        for uid, amount in equal_split(Decimal(e.amount), member_ids):
+            db.add(ExpenseSplit(expense_id=e.id, user_id=uid, amount=amount))
+
+
 def _member_out(membership: Membership) -> MemberOut:
     return MemberOut(
         id=membership.user.id,
@@ -224,45 +262,7 @@ def join_group(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Invalid invite link"
         )
-    existing = (
-        db.query(Membership)
-        .filter(
-            Membership.group_id == group.id, Membership.user_id == current_user.id
-        )
-        .first()
-    )
-    if existing:
-        return _group_detail(db, group)
-    member_count = (
-        db.query(Membership).filter(Membership.group_id == group.id).count()
-    )
-    if member_count >= group.max_members:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Group is full"
-        )
-    db.add(Membership(user_id=current_user.id, group_id=group.id))
-    db.flush()
-    if group.settled_at is None:
-        member_ids = [
-            m.user_id
-            for m in db.query(Membership)
-            .filter(Membership.group_id == group.id)
-            .all()
-        ]
-        equal_expenses = (
-            db.query(Expense)
-            .filter(
-                Expense.group_id == group.id,
-                Expense.split_type == SplitType.EQUAL,
-            )
-            .all()
-        )
-        for e in equal_expenses:
-            db.query(ExpenseSplit).filter(
-                ExpenseSplit.expense_id == e.id
-            ).delete(synchronize_session=False)
-            for uid, amount in equal_split(Decimal(e.amount), member_ids):
-                db.add(ExpenseSplit(expense_id=e.id, user_id=uid, amount=amount))
+    _add_member(db, group, current_user.id)
     db.commit()
     return _group_detail(db, group)
 
