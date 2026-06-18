@@ -207,3 +207,122 @@ class DirectExpenseApiTest(unittest.TestCase):
             "/api/direct-expenses/nonexistent", headers=self._auth(self.a)
         )
         self.assertEqual(res.status_code, 404)
+
+
+class FriendSettleTest(unittest.TestCase):
+    def setUp(self):
+        self.engine = create_engine(
+            "sqlite:///:memory:",
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
+        Base.metadata.create_all(bind=self.engine)
+        self.Session = sessionmaker(
+            bind=self.engine, autocommit=False, autoflush=False
+        )
+        self.db = self.Session()
+        self.a = User(phone_number="+15550000001", username="A")
+        self.b = User(phone_number="+15550000002", username="B")
+        self.c = User(phone_number="+15550000003", username="C")
+        self.db.add_all([self.a, self.b, self.c])
+        self.db.flush()
+        self.db.add_all([
+            Friendship(
+                requester_id=self.a.id,
+                addressee_id=self.b.id,
+                status=FriendshipStatus.ACCEPTED,
+            ),
+            Friendship(
+                requester_id=self.a.id,
+                addressee_id=self.c.id,
+                status=FriendshipStatus.ACCEPTED,
+            ),
+        ])
+        self.db.commit()
+
+        def override_get_db():
+            db = self.Session()
+            try:
+                yield db
+            finally:
+                db.close()
+
+        app.dependency_overrides[get_db] = override_get_db
+        self.client = TestClient(app)
+
+    def tearDown(self):
+        app.dependency_overrides.clear()
+        self.db.close()
+        self.engine.dispose()
+
+    def _auth(self, user):
+        return {"Authorization": f"Bearer {create_access_token(user.id)}"}
+
+    def test_three_person_balance_and_settle(self):
+        # A pays 30 split equally among A, B, C -> B owes A 10, C owes A 10.
+        self.client.post(
+            "/api/direct-expenses",
+            json={
+                "title": "Lunch",
+                "amount": "30.00",
+                "paid_by": self.a.id,
+                "split_type": "EQUAL",
+                "participant_ids": [self.a.id, self.b.id, self.c.id],
+            },
+            headers=self._auth(self.a),
+        )
+        friends = {
+            f["id"]: f["net_balance"]
+            for f in self.client.get(
+                "/api/friends", headers=self._auth(self.a)
+            ).json()
+        }
+        self.assertEqual(friends[self.b.id], 10.0)
+        self.assertEqual(friends[self.c.id], 10.0)
+
+        # B's view: B owes A 10 -> negative.
+        b_friends = {
+            f["id"]: f["net_balance"]
+            for f in self.client.get(
+                "/api/friends", headers=self._auth(self.b)
+            ).json()
+        }
+        self.assertEqual(b_friends[self.a.id], -10.0)
+
+        # A settles up with B.
+        res = self.client.post(
+            f"/api/friends/{self.b.id}/settle", headers=self._auth(self.a)
+        )
+        self.assertEqual(res.status_code, 200)
+        friends_after = {
+            f["id"]: f["net_balance"]
+            for f in self.client.get(
+                "/api/friends", headers=self._auth(self.a)
+            ).json()
+        }
+        self.assertEqual(friends_after[self.b.id], 0.0)
+        self.assertEqual(friends_after[self.c.id], 10.0)
+
+    def test_settle_zero_balance_rejected(self):
+        res = self.client.post(
+            f"/api/friends/{self.b.id}/settle", headers=self._auth(self.a)
+        )
+        self.assertEqual(res.status_code, 400)
+
+    def test_remove_friend_with_balance_rejected(self):
+        # A pays 20 split equally with B -> B owes A 10.
+        self.client.post(
+            "/api/direct-expenses",
+            json={
+                "title": "Dinner",
+                "amount": "20.00",
+                "paid_by": self.a.id,
+                "split_type": "EQUAL",
+                "participant_ids": [self.a.id, self.b.id],
+            },
+            headers=self._auth(self.a),
+        )
+        res = self.client.delete(
+            f"/api/friends/{self.b.id}", headers=self._auth(self.a)
+        )
+        self.assertEqual(res.status_code, 400)

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.core.security import get_current_user
 from app.database import get_db
-from app.models.expense import Expense, ExpenseSplit
+from app.models.expense import Expense, ExpenseSplit, Settlement
 from app.models.friendship import Friendship, FriendshipStatus
 from app.models.user import User, utcnow
 from app.routers.expenses import _expense_out
@@ -168,6 +168,42 @@ def remove_friend(
         )
     db.delete(friendship)
     db.commit()
+
+
+@router.post("/{friend_id}/settle")
+def settle_with_friend(
+    friend_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if not friends_svc.are_friends(db, current_user.id, friend_id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Friend not found"
+        )
+    balance = friends_svc.friend_balance(db, current_user.id, friend_id)
+    if balance == Decimal("0.00"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Nothing to settle",
+        )
+    # Positive balance: friend owes me -> friend pays me (from=friend, to=me).
+    # Negative balance: I owe friend -> I pay friend (from=me, to=friend).
+    if balance > 0:
+        from_user, to_user, amount = friend_id, current_user.id, balance
+    else:
+        from_user, to_user, amount = current_user.id, friend_id, -balance
+    db.add(
+        Settlement(
+            group_id=None,
+            from_user=from_user,
+            to_user=to_user,
+            amount=amount,
+            is_paid=True,
+            paid_at=utcnow(),
+        )
+    )
+    db.commit()
+    return {"settled_amount": float(amount)}
 
 
 @router.get("/{friend_id}/expenses", response_model=list[ExpenseOut])
