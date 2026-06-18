@@ -103,7 +103,7 @@ def my_invitations(
         GroupInvitationOut(
             id=r.id,
             group_id=r.group_id,
-            group_name=groups[r.group_id].name if r.group_id in groups else "",
+            group_name=groups[r.group_id].name,
             invited_by_username=inviters.get(r.invited_by),
             created_at=r.created_at,
         )

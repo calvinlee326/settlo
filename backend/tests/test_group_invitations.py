@@ -147,7 +147,8 @@ class GroupInvitationApiTest(unittest.TestCase):
             json={"group_id": self.group.id, "phone_number": self.invitee.phone_number},
             headers=self._auth(self.owner),
         )
-        inv_id = self.db.query(GroupInvitation).one().id
+        with self.Session() as s:
+            inv_id = s.query(GroupInvitation).one().id
         res = self.client.post(
             f"/api/group-invitations/{inv_id}/decline",
             headers=self._auth(self.invitee),
@@ -155,3 +156,24 @@ class GroupInvitationApiTest(unittest.TestCase):
         self.assertEqual(res.status_code, 204)
         with self.Session() as s:
             self.assertEqual(s.query(GroupInvitation).count(), 0)
+
+    def test_invite_self_rejected(self):
+        res = self.client.post(
+            "/api/group-invitations",
+            json={"group_id": self.group.id, "phone_number": self.owner.phone_number},
+            headers=self._auth(self.owner),
+        )
+        self.assertEqual(res.status_code, 400)
+
+    def test_invite_to_settled_group_blocked(self):
+        from app.models.user import utcnow
+        with self.Session() as s:
+            g = s.query(Group).filter(Group.id == self.group.id).one()
+            g.settled_at = utcnow()
+            s.commit()
+        res = self.client.post(
+            "/api/group-invitations",
+            json={"group_id": self.group.id, "phone_number": self.invitee.phone_number},
+            headers=self._auth(self.owner),
+        )
+        self.assertEqual(res.status_code, 400)
