@@ -1,20 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import api from '../api/axios';
 import ErrorMessage from '../components/ErrorMessage';
 import GroupCard from '../components/GroupCard';
 import { SkeletonList } from '../components/LoadingSpinner';
-import useAuthStore from '../store/authStore';
-import PaymentHistoryItem from '../components/PaymentHistoryItem';
 
 export default function HomePage() {
-  const navigate = useNavigate();
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [joinInput, setJoinInput] = useState('');
   const [invites, setInvites] = useState([]);
-  const user = useAuthStore((s) => s.user);
 
   const loadInvites = () =>
     api
@@ -39,20 +34,6 @@ export default function HomePage() {
     }
   };
 
-  const handleJoin = () => {
-    const val = joinInput.trim();
-    if (!val) return;
-    let token = val;
-    try {
-      const url = new URL(val);
-      const parts = url.pathname.split('/').filter(Boolean);
-      token = parts[parts.length - 1];
-    } catch {
-      // bare token
-    }
-    navigate(`/invite/${token}`);
-  };
-
   useEffect(() => {
     api
       .get('/groups/')
@@ -64,7 +45,6 @@ export default function HomePage() {
   }, []);
 
   const activeGroups = groups.filter((g) => !g.settled_at);
-  const settledGroups = groups.filter((g) => g.settled_at);
 
   return (
     <div className="space-y-4">
@@ -118,42 +98,6 @@ export default function HomePage() {
           ))}
         </div>
       )}
-      {settledGroups.length > 0 && (
-        <div className="space-y-3 pt-2">
-          <h2 className="text-lg font-medium text-white/90">Payment History</h2>
-          {settledGroups.map((group) => (
-            <PaymentHistoryItem
-              key={group.id}
-              group={group}
-              canDelete={group.created_by === user?.id}
-              onDeleted={(gid) =>
-                setGroups((prev) => prev.filter((g) => g.id !== gid))
-              }
-            />
-          ))}
-        </div>
-      )}
-      <div className="glass p-4 space-y-3">
-        <p className="text-[13px] font-medium text-white/55">Join a group</p>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            placeholder="Paste invite link or token"
-            value={joinInput}
-            onChange={(e) => setJoinInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
-            className="min-w-0 flex-1 rounded-xl bg-white/10 px-3 py-2 text-[14px] text-white placeholder-white/30 outline-none"
-          />
-          <button
-            onClick={handleJoin}
-            disabled={!joinInput.trim()}
-            className="shrink-0 rounded-xl bg-violet-500 px-4 py-2 text-[14px] font-medium text-white transition-opacity hover:opacity-80 disabled:opacity-40"
-          >
-            Join
-          </button>
-        </div>
-      </div>
-
       <Link to="/groups/new" aria-label="Create new group" className="fab">
         +
       </Link>

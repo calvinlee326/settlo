@@ -12,6 +12,7 @@ import InvitePage from './pages/InvitePage';
 import FriendsPage from './pages/FriendsPage';
 import NewDirectExpensePage from './pages/NewDirectExpensePage';
 import SettingsPage from './pages/SettingsPage';
+import PaymentHistoryPage from './pages/PaymentHistoryPage';
 
 function Layout({ children }) {
   return (
@@ -120,6 +121,16 @@ export default function App() {
           <ProtectedRoute>
             <Layout>
               <NewDirectExpensePage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/history"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <PaymentHistoryPage />
             </Layout>
           </ProtectedRoute>
         }

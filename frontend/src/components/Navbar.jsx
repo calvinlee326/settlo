@@ -121,6 +121,15 @@ export default function Navbar() {
                   <button
                     onClick={() => {
                       setMenuOpen(false);
+                      navigate('/history');
+                    }}
+                    className="block w-full px-4 py-2.5 text-left text-sm text-white/80 transition-colors hover:bg-white/10"
+                  >
+                    Payment History
+                  </button>
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
                       navigate('/settings');
                     }}
                     className="block w-full px-4 py-2.5 text-left text-sm text-white/80 transition-colors hover:bg-white/10"

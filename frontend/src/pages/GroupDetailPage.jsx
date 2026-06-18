@@ -19,10 +19,9 @@ export default function GroupDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [inviteLink, setInviteLink] = useState('');
-  const [inviteCode, setInviteCode] = useState('');
-  const [copied, setCopied] = useState(false);
   const [friends, setFriends] = useState([]);
   const [invitePhone, setInvitePhone] = useState('');
+  const [inviteFriendId, setInviteFriendId] = useState('');
   const [inviteNotice, setInviteNotice] = useState('');
 
   useEffect(() => {
@@ -63,6 +62,21 @@ export default function GroupDetailPage() {
     }
   };
 
+  const removeMember = async (memberId, name) => {
+    if (!window.confirm(`Remove ${name} from this group?`)) return;
+    setError('');
+    try {
+      await api.delete(`/groups/${id}/members/${memberId}`);
+      setGroup((g) => ({
+        ...g,
+        members: g.members.filter((m) => m.id !== memberId),
+        member_count: g.member_count - 1,
+      }));
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to remove member');
+    }
+  };
+
   const load = useCallback(async () => {
     try {
       const [groupRes, expensesRes] = await Promise.all([
@@ -85,26 +99,10 @@ export default function GroupDetailPage() {
   const handleInvite = async () => {
     try {
       const { data } = await api.get(`/groups/${id}/invite`);
-      setInviteCode(data.invite_token);
       setInviteLink(`${window.location.origin}/invite/${data.invite_token}`);
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to get invite link');
     }
-  };
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(inviteLink);
-    } catch {
-      const el = document.createElement('textarea');
-      el.value = inviteLink;
-      document.body.appendChild(el);
-      el.select();
-      document.execCommand('copy');
-      document.body.removeChild(el);
-    }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleDeleteExpense = async (expenseId) => {
@@ -124,6 +122,16 @@ export default function GroupDetailPage() {
       navigate('/');
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to delete group');
+    }
+  };
+
+  const leaveGroup = async () => {
+    if (!window.confirm('Leave this group?')) return;
+    try {
+      await api.delete(`/groups/${id}/members/${user.id}`);
+      navigate('/');
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to leave group');
     }
   };
 
@@ -148,19 +156,37 @@ export default function GroupDetailPage() {
               </p>
             )}
           </div>
-          {isCreator && (
+          {isCreator ? (
             <button
               onClick={handleDeleteGroup}
               className="text-[13px] font-medium text-red-400/80 transition-colors hover:text-red-400"
             >
               Delete
             </button>
-          )}
+          ) : !isSettled ? (
+            <button
+              onClick={leaveGroup}
+              className="text-[13px] font-medium text-red-400/80 transition-colors hover:text-red-400"
+            >
+              Leave
+            </button>
+          ) : null}
         </div>
-        <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-1">
+        <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-1 pt-1">
           {group.members.map((member) => (
-            <div key={member.id} className="flex flex-col items-center gap-1">
-              <Avatar name={member.username || 'Member'} size="sm" />
+            <div key={member.id} className="flex shrink-0 flex-col items-center gap-1">
+              <div className="relative">
+                {isCreator && !isSettled && member.id !== group.created_by && (
+                  <button
+                    onClick={() => removeMember(member.id, member.username || 'this member')}
+                    aria-label={`Remove ${member.username || 'member'}`}
+                    className="absolute -right-1 -top-1 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[11px] font-bold leading-none text-white ring-2 ring-black/30"
+                  >
+                    ×
+                  </button>
+                )}
+                <Avatar name={member.username || 'Member'} size="sm" />
+              </div>
               <span className="max-w-[3.5rem] truncate text-[10px] text-white/50">
                 {member.id === user?.id ? 'You' : member.username || 'Member'}
               </span>
@@ -175,27 +201,6 @@ export default function GroupDetailPage() {
           </button>
         </div>
       </div>
-
-      {!isSettled && (() => {
-        const memberIds = new Set(group.members.map((m) => m.id));
-        const addable = friends.filter((f) => !memberIds.has(f.id));
-        if (addable.length === 0) return null;
-        return (
-          <div className="glass space-y-2 p-4">
-            <p className="text-[13px] font-medium text-white/55">Add friends</p>
-            {addable.map((f) => (
-              <div key={f.id} className="flex items-center justify-between">
-                <span className="text-[15px] text-white/85">
-                  {f.username || f.phone_number}
-                </span>
-                <Button variant="secondary" onClick={() => addFriend(f.id)}>
-                  Add
-                </Button>
-              </div>
-            ))}
-          </div>
-        );
-      })()}
 
       <ErrorMessage message={error} />
 
@@ -258,17 +263,8 @@ export default function GroupDetailPage() {
               <div className="rounded-2xl bg-white p-3">
                 <QRCodeSVG value={inviteLink} size={160} />
               </div>
-              <p className="text-[13px] text-white/55">Scan to join, or share the code</p>
-              <div className="text-2xl font-bold tracking-[0.3em] text-white">
-                {inviteCode}
-              </div>
+              <p className="text-[13px] text-white/55">Scan to join</p>
             </div>
-            <input
-              readOnly
-              value={inviteLink}
-              className="w-full rounded-xl bg-white/10 px-3 py-2 text-[13px] text-white/80 outline-none"
-              onFocus={(e) => e.target.select()}
-            />
             <div className="space-y-2 border-t border-white/10 pt-3">
               <p className="text-[13px] font-medium text-white/55">Invite by phone</p>
               <div className="flex gap-2">
@@ -290,20 +286,43 @@ export default function GroupDetailPage() {
               </div>
               {inviteNotice && <p className="text-[12px] text-emerald-400">{inviteNotice}</p>}
             </div>
-            <div className="flex gap-3">
-              <button
-                onClick={handleCopy}
-                className="flex-1 rounded-xl bg-violet-500 py-2 text-[14px] font-medium text-white transition-opacity hover:opacity-80"
-              >
-                {copied ? 'Copied!' : 'Copy link'}
-              </button>
-              <button
-                onClick={() => { setInviteLink(''); setCopied(false); setInviteNotice(''); }}
-                className="flex-1 rounded-xl bg-white/10 py-2 text-[14px] font-medium text-white/70 transition-opacity hover:opacity-80"
-              >
-                Close
-              </button>
-            </div>
+            {(() => {
+              const memberIds = new Set(group.members.map((m) => m.id));
+              const addable = friends.filter((f) => !memberIds.has(f.id));
+              if (addable.length === 0) return null;
+              return (
+                <div className="space-y-2 border-t border-white/10 pt-3">
+                  <p className="text-[13px] font-medium text-white/55">Add a friend</p>
+                  <div className="flex gap-2">
+                    <select
+                      value={inviteFriendId}
+                      onChange={(e) => setInviteFriendId(e.target.value)}
+                      className="min-w-0 flex-1 rounded-xl bg-white/10 px-3 py-2 text-[13px] text-white outline-none"
+                    >
+                      <option value="">Select a friend</option>
+                      {addable.map((f) => (
+                        <option key={f.id} value={f.id} className="bg-zinc-900">
+                          {f.username || f.phone_number}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => { addFriend(inviteFriendId); setInviteFriendId(''); }}
+                      disabled={!inviteFriendId}
+                      className="shrink-0 rounded-xl bg-violet-500 px-4 py-2 text-[13px] font-medium text-white transition-opacity hover:opacity-80 disabled:opacity-40"
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
+            <button
+              onClick={() => { setInviteLink(''); setInviteNotice(''); }}
+              className="w-full rounded-xl bg-white/10 py-2 text-[14px] font-medium text-white/70 transition-opacity hover:opacity-80"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}

@@ -71,6 +71,7 @@ export default function FriendsPage() {
   };
 
   const remove = async (friendId) => {
+    if (!window.confirm('Remove this friend?')) return;
     setError('');
     try {
       await api.delete(`/friends/${friendId}`);
