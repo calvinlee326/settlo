@@ -282,7 +282,14 @@ class FriendListApiTest(unittest.TestCase):
             f"/api/friends/{self.b.id}", headers=self._auth(self.a)
         )
         self.assertEqual(res.status_code, 204)
-        self.assertEqual(self.db.query(Friendship).count(), 0)
+        with self.Session() as s:
+            self.assertEqual(s.query(Friendship).count(), 0)
+
+    def test_remove_non_friend_returns_404(self):
+        res = self.client.delete(
+            "/api/friends/nonexistent", headers=self._auth(self.a)
+        )
+        self.assertEqual(res.status_code, 404)
 
 
 if __name__ == "__main__":
