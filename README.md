@@ -1,11 +1,20 @@
 # Settlo
 
-Split bills among friends for dinners, trips, and more. Settlo calculates who owes whom with the minimum number of transactions.
+Split bills for dinners, trips, and more — in groups or one-on-one with friends. Settlo calculates who owes whom with the minimum number of transactions.
+
+## Features
+
+- **Groups** — create a group, add expenses (split equally or with custom amounts), and settle up with the fewest transactions.
+- **Friends & direct expenses** — add friends by phone, log one-on-one expenses outside any group, and track a running balance per friend.
+- **Invitations** — invite someone to a group by phone (a pending invite appears on their home screen), by scanning a QR code, or by adding an existing friend.
+- **Member management** — the creator can remove members and any member can leave a group; removal is blocked while that member still has expenses or settlements.
+- **Payment history** — settled groups are archived to a dedicated history page.
+- **PWA** — installable, mobile-first interface.
 
 ## Stack
 
 - **Backend:** Python 3.10+, FastAPI, SQLAlchemy, Alembic, SQLite (dev) / PostgreSQL (prod), JWT auth
-- **Frontend:** React 18, Vite, Tailwind CSS, React Router v6, Zustand, Axios (PWA-ready)
+- **Frontend:** React 18, Vite, Tailwind CSS, React Router v6, Zustand, Axios, qrcode.react (PWA-ready)
 
 ## Quick Start
 
@@ -107,11 +116,24 @@ Each member's net balance = total paid − total owed. A greedy max-heap matchin
 | POST | /api/auth/refresh | New access token |
 | GET | /api/auth/me | Current user |
 | POST/GET | /api/groups/ | Create / list groups |
-| GET/DELETE | /api/groups/{id} | Detail / delete |
-| GET | /api/groups/{id}/invite | Invite link |
+| GET/DELETE | /api/groups/{id} | Detail / delete (creator only) |
+| GET | /api/groups/{id}/invite | Invite token (QR / link) |
 | GET/POST | /api/groups/join/{token} | Preview / join via invite |
-| DELETE | /api/groups/{id}/members/{uid} | Remove member |
+| POST | /api/groups/{id}/members | Add a friend to the group |
+| DELETE | /api/groups/{id}/members/{uid} | Remove member / leave group |
 | POST/GET | /api/groups/{id}/expenses/ | Create / list expenses |
 | DELETE | /api/groups/{id}/expenses/{eid} | Delete expense |
 | GET | /api/groups/{id}/settlements/ | Calculate settlements |
 | POST | /api/groups/{id}/settlements/{sid}/pay | Mark paid |
+| POST/GET | /api/group-invitations | Invite by phone / list my pending invites |
+| POST | /api/group-invitations/{id}/accept | Accept group invite |
+| POST | /api/group-invitations/{id}/decline | Decline group invite |
+| POST/GET | /api/friends/requests | Send / list friend requests |
+| POST | /api/friends/requests/{id}/accept | Accept friend request |
+| POST | /api/friends/requests/{id}/decline | Decline friend request |
+| GET | /api/friends | List friends with net balances |
+| DELETE | /api/friends/{id} | Remove friend |
+| POST | /api/friends/{id}/settle | Settle up with a friend |
+| GET | /api/friends/{id}/expenses | Direct expenses with a friend |
+| POST | /api/direct-expenses | Create a direct expense |
+| DELETE | /api/direct-expenses/{id} | Delete a direct expense |
