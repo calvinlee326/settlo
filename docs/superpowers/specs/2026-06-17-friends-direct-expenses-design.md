@@ -80,11 +80,15 @@ participant. So for the caller `me` and a friend `friend`:
 ```
 net(me, friend) =  Σ friend_share   over direct expenses I paid
                  − Σ my_share        over direct expenses friend paid
-                 − Σ settlements I paid friend (is_paid)
-                 + Σ settlements friend paid me (is_paid)
+                 + Σ settlements I paid friend (is_paid)
+                 − Σ settlements friend paid me (is_paid)
 ```
 
-Positive = friend owes me. Computed live from existing tables; the pure
+Settlement signs match the existing group logic in `settlements._compute_balances`
+(`balances[from_user] += amount; balances[to_user] -= amount`): a settlement
+*from* me increases what the friend owes me, a settlement *from* the friend
+reduces it. The normal flow (friend owes me, friend pays me) therefore zeroes the
+balance. Positive = friend owes me. Computed live from existing tables; the pure
 `calculate_settlements` / `equal_split` helpers in `services/settlement.py` are
 reused unchanged. Expenses where neither `me` nor `friend` is the payer
 contribute 0 to that pair.
