@@ -33,12 +33,12 @@ export default function NewGroupPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-[28px] font-semibold text-white">New Group</h1>
-      <form onSubmit={handleSubmit} className="glass space-y-4 p-6">
+      <h1 className="text-[28px] font-semibold text-ink">New Group</h1>
+      <form onSubmit={handleSubmit} className="card space-y-4 p-6">
         <div>
           <label
             htmlFor="name"
-            className="mb-1.5 block text-[13px] font-medium text-white/50"
+            className="mb-1.5 block text-[13px] font-medium text-muted"
           >
             Group name
           </label>
@@ -49,15 +49,15 @@ export default function NewGroupPage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             maxLength={100}
-            className="input-glass"
+            className="input"
           />
         </div>
         <div>
           <label
             htmlFor="description"
-            className="mb-1.5 block text-[13px] font-medium text-white/50"
+            className="mb-1.5 block text-[13px] font-medium text-muted"
           >
-            Description <span className="text-white/30">(optional)</span>
+            Description <span className="text-muted">(optional)</span>
           </label>
           <textarea
             id="description"
@@ -66,7 +66,7 @@ export default function NewGroupPage() {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             maxLength={255}
-            className="input-glass resize-none"
+            className="input resize-none"
           />
         </div>
         <ErrorMessage message={error} />

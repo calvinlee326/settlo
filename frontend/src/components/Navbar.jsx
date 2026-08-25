@@ -74,15 +74,15 @@ export default function Navbar() {
   };
 
   return (
-    <nav className={`navbar-glass ${scrolled ? 'scrolled' : ''}`}>
+    <nav className={`navbar ${scrolled ? 'scrolled' : ''}`}>
       <div className="mx-auto flex h-full max-w-[480px] items-center justify-between px-4">
         <Link
           to="/"
-          className="relative text-lg font-semibold tracking-wide text-white"
+          className="relative text-lg font-semibold tracking-tight text-ink"
         >
           Settlo
           {inviteCount > 0 && (
-            <span className="absolute -right-3 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white shadow-[0_0_8px_rgba(239,68,68,0.5)]">
+            <span className="absolute -right-3 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-clay px-1 text-[10px] font-bold leading-none text-paper">
               {inviteCount > 99 ? '99+' : inviteCount}
             </span>
           )}
@@ -90,11 +90,11 @@ export default function Navbar() {
         <div className="flex items-center gap-4">
           <Link
             to="/friends"
-            className="relative text-sm font-medium text-white/55 transition-colors hover:text-white"
+            className="relative text-sm font-medium text-muted transition-colors hover:text-ink"
           >
             Friends
             {requestCount > 0 && (
-              <span className="absolute -right-3 -top-2 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white shadow-[0_0_8px_rgba(239,68,68,0.5)]">
+              <span className="absolute -right-3 -top-2 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-clay px-1 text-[10px] font-bold leading-none text-paper">
                 {requestCount > 99 ? '99+' : requestCount}
               </span>
             )}
@@ -103,7 +103,7 @@ export default function Navbar() {
             <div className="relative" ref={menuRef}>
               <button
                 onClick={() => setMenuOpen((open) => !open)}
-                className="flex items-center gap-1 text-sm font-medium text-white/75 transition-colors hover:text-white"
+                className="flex items-center gap-1 text-sm font-medium text-ink-soft transition-colors hover:text-ink"
               >
                 {user.username || user.phone_number}
                 <svg
@@ -117,13 +117,13 @@ export default function Navbar() {
                 </svg>
               </button>
               {menuOpen && (
-                <div className="glass absolute right-0 mt-2 w-40 overflow-hidden rounded-2xl py-1">
+                <div className="card absolute right-0 mt-2 w-40 overflow-hidden py-1">
                   <button
                     onClick={() => {
                       setMenuOpen(false);
                       navigate('/history');
                     }}
-                    className="block w-full px-4 py-2.5 text-left text-sm text-white/80 transition-colors hover:bg-white/10"
+                    className="block w-full px-4 py-2.5 text-left text-sm text-ink-soft transition-colors hover:bg-sunk"
                   >
                     Payment History
                   </button>
@@ -132,13 +132,13 @@ export default function Navbar() {
                       setMenuOpen(false);
                       navigate('/settings');
                     }}
-                    className="block w-full px-4 py-2.5 text-left text-sm text-white/80 transition-colors hover:bg-white/10"
+                    className="block w-full px-4 py-2.5 text-left text-sm text-ink-soft transition-colors hover:bg-sunk"
                   >
                     Settings
                   </button>
                   <button
                     onClick={handleLogout}
-                    className="block w-full px-4 py-2.5 text-left text-sm text-red-400 transition-colors hover:bg-white/10"
+                    className="block w-full px-4 py-2.5 text-left text-sm text-clay transition-colors hover:bg-sunk"
                   >
                     Logout
                   </button>

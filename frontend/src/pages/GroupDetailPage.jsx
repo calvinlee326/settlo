@@ -144,14 +144,14 @@ export default function GroupDetailPage() {
 
   return (
     <div className="space-y-5">
-      <div className="glass p-5">
+      <div className="card p-5">
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-[28px] font-semibold text-white">
+            <h1 className="text-[28px] font-semibold text-ink">
               {group.name}
             </h1>
             {group.description && (
-              <p className="mt-1 text-[15px] text-white/55">
+              <p className="mt-1 text-[15px] text-muted">
                 {group.description}
               </p>
             )}
@@ -159,14 +159,14 @@ export default function GroupDetailPage() {
           {isCreator ? (
             <button
               onClick={handleDeleteGroup}
-              className="text-[13px] font-medium text-red-400/80 transition-colors hover:text-red-400"
+              className="text-[13px] font-medium text-clay transition-colors hover:text-clay"
             >
               Delete
             </button>
           ) : !isSettled ? (
             <button
               onClick={leaveGroup}
-              className="text-[13px] font-medium text-red-400/80 transition-colors hover:text-red-400"
+              className="text-[13px] font-medium text-clay transition-colors hover:text-clay"
             >
               Leave
             </button>
@@ -180,21 +180,21 @@ export default function GroupDetailPage() {
                   <button
                     onClick={() => removeMember(member.id, member.username || 'this member')}
                     aria-label={`Remove ${member.username || 'member'}`}
-                    className="absolute -right-1 -top-1 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[11px] font-bold leading-none text-white ring-2 ring-black/30"
+                    className="absolute -right-1 -top-1 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-clay text-[11px] font-bold leading-none text-ink ring-2 ring-black/30"
                   >
                     ×
                   </button>
                 )}
                 <Avatar name={member.username || 'Member'} size="sm" />
               </div>
-              <span className="max-w-[3.5rem] truncate text-[10px] text-white/50">
+              <span className="max-w-[3.5rem] truncate text-[10px] text-muted">
                 {member.id === user?.id ? 'You' : member.username || 'Member'}
               </span>
             </div>
           ))}
           <button
             onClick={handleInvite}
-            className="flex h-8 w-8 shrink-0 items-center justify-center self-start rounded-full border-2 border-dashed border-white/25 text-white/40 transition-colors hover:border-violet-400/70 hover:text-violet-300"
+            className="flex h-8 w-8 shrink-0 items-center justify-center self-start rounded-full border-2 border-dashed border-slate text-muted transition-colors hover:border-slate hover:text-slate-deep"
             aria-label="Show invite link"
           >
             +
@@ -205,21 +205,21 @@ export default function GroupDetailPage() {
       <ErrorMessage message={error} />
 
       {isSettled && (
-        <div className="rounded-glass border border-emerald-400/30 bg-emerald-500/10 p-3 text-center text-[14px] text-emerald-300">
+        <div className="rounded-card border border-moss/30 bg-moss-tint p-3 text-center text-[14px] text-moss">
           Settled — this group is archived in Payment History.
         </div>
       )}
 
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-medium text-white/90">Expenses</h2>
-        <span className="text-sm font-medium tabular-nums text-white/55">
+        <h2 className="text-lg font-medium text-ink">Expenses</h2>
+        <span className="text-sm font-medium tabular-nums text-muted">
           Total ${total.toFixed(2)}
         </span>
       </div>
 
       {expenses.length === 0 ? (
-        <div className="rounded-glass border border-dashed border-white/15 bg-white/[0.03] p-8 text-center">
-          <p className="text-[15px] text-white/55">
+        <div className="rounded-card border border-dashed border-rule bg-surface p-8 text-center">
+          <p className="text-[15px] text-muted">
             No expenses yet. Tap + to add the first one.
           </p>
         </div>
@@ -257,16 +257,16 @@ export default function GroupDetailPage() {
 
       {inviteLink && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div className="glass-strong w-full max-w-sm space-y-4 p-6">
-            <h2 className="text-[17px] font-semibold text-white">Invite to group</h2>
+          <div className="card w-full max-w-sm space-y-4 p-6">
+            <h2 className="text-[17px] font-semibold text-ink">Invite to group</h2>
             <div className="flex flex-col items-center gap-3">
               <div className="rounded-2xl bg-white p-3">
                 <QRCodeSVG value={inviteLink} size={160} />
               </div>
-              <p className="text-[13px] text-white/55">Scan to join</p>
+              <p className="text-[13px] text-muted">Scan to join</p>
             </div>
-            <div className="space-y-2 border-t border-white/10 pt-3">
-              <p className="text-[13px] font-medium text-white/55">Invite by phone</p>
+            <div className="space-y-2 border-t border-rule pt-3">
+              <p className="text-[13px] font-medium text-muted">Invite by phone</p>
               <div className="flex gap-2">
                 <input
                   type="tel"
@@ -274,27 +274,27 @@ export default function GroupDetailPage() {
                   placeholder="909-555-0101"
                   value={invitePhone}
                   onChange={(e) => setInvitePhone(formatPhone(e.target.value))}
-                  className="min-w-0 flex-1 rounded-xl bg-white/10 px-3 py-2 text-[13px] text-white placeholder-white/30 outline-none"
+                  className="min-w-0 flex-1 rounded-xl bg-sunk px-3 py-2 text-[13px] text-ink placeholder-muted outline-none"
                 />
                 <button
                   onClick={sendPhoneInvite}
                   disabled={!invitePhone.trim()}
-                  className="shrink-0 rounded-xl bg-violet-500 px-4 py-2 text-[13px] font-medium text-white transition-opacity hover:opacity-80 disabled:opacity-40"
+                  className="shrink-0 rounded-xl bg-slate-deep px-4 py-2 text-[13px] font-medium text-ink transition-opacity hover:opacity-80 disabled:opacity-40"
                 >
                   Invite
                 </button>
               </div>
-              {inviteNotice && <p className="text-[12px] text-emerald-400">{inviteNotice}</p>}
+              {inviteNotice && <p className="text-[12px] text-moss">{inviteNotice}</p>}
             </div>
             {(() => {
               if (friends.length === 0) return null;
               const memberIds = new Set(group.members.map((m) => m.id));
               const addable = friends.filter((f) => !memberIds.has(f.id));
               return (
-                <div className="space-y-2 border-t border-white/10 pt-3">
-                  <p className="text-[13px] font-medium text-white/55">Add a friend</p>
+                <div className="space-y-2 border-t border-rule pt-3">
+                  <p className="text-[13px] font-medium text-muted">Add a friend</p>
                   {addable.length === 0 ? (
-                    <p className="text-[13px] text-white/40">
+                    <p className="text-[13px] text-muted">
                       All your friends are already in this group.
                     </p>
                   ) : (
@@ -302,7 +302,7 @@ export default function GroupDetailPage() {
                       <select
                         value={inviteFriendId}
                         onChange={(e) => setInviteFriendId(e.target.value)}
-                        className="min-w-0 flex-1 rounded-xl bg-white/10 px-3 py-2 text-[13px] text-white outline-none"
+                        className="min-w-0 flex-1 rounded-xl bg-sunk px-3 py-2 text-[13px] text-ink outline-none"
                       >
                         <option value="">Select a friend</option>
                         {addable.map((f) => (
@@ -314,7 +314,7 @@ export default function GroupDetailPage() {
                       <button
                         onClick={() => { addFriend(inviteFriendId); setInviteFriendId(''); }}
                         disabled={!inviteFriendId}
-                        className="shrink-0 rounded-xl bg-violet-500 px-4 py-2 text-[13px] font-medium text-white transition-opacity hover:opacity-80 disabled:opacity-40"
+                        className="shrink-0 rounded-xl bg-slate-deep px-4 py-2 text-[13px] font-medium text-ink transition-opacity hover:opacity-80 disabled:opacity-40"
                       >
                         Add
                       </button>
@@ -325,7 +325,7 @@ export default function GroupDetailPage() {
             })()}
             <button
               onClick={() => { setInviteLink(''); setInviteNotice(''); }}
-              className="w-full rounded-xl bg-white/10 py-2 text-[14px] font-medium text-white/70 transition-opacity hover:opacity-80"
+              className="w-full rounded-xl bg-sunk py-2 text-[14px] font-medium text-ink-soft transition-opacity hover:opacity-80"
             >
               Close
             </button>

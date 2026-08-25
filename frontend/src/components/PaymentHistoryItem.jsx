@@ -43,33 +43,33 @@ export default function PaymentHistoryItem({ group, canDelete, onDeleted }) {
   };
 
   return (
-    <div className="glass overflow-hidden">
+    <div className="card overflow-hidden">
       <button
         onClick={toggle}
         className="flex w-full items-center justify-between p-4 text-left"
       >
         <div>
-          <p className="text-[15px] font-semibold text-white">{group.name}</p>
-          <p className="text-[13px] text-white/50">
+          <p className="text-[15px] font-semibold text-ink">{group.name}</p>
+          <p className="text-[13px] text-muted">
             Settled {new Date(group.settled_at).toLocaleDateString()}
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-[15px] font-semibold tabular-nums text-white/70">
+          <span className="text-[15px] font-semibold tabular-nums text-ink-soft">
             ${(group.total ?? 0).toFixed(2)}
           </span>
-          <span className="text-white/40">{open ? '▾' : '▸'}</span>
+          <span className="text-muted">{open ? '▾' : '▸'}</span>
         </div>
       </button>
 
       {open && (
-        <div className="space-y-4 border-t border-white/10 p-4">
+        <div className="space-y-4 border-t border-rule p-4">
           {loading || !detail ? (
-            <p className="text-[14px] text-white/50">Loading…</p>
+            <p className="text-[14px] text-muted">Loading…</p>
           ) : (
             <>
               <div>
-                <h4 className="text-[12px] font-medium uppercase tracking-wide text-white/45">
+                <h4 className="eyebrow">
                   Expenses
                 </h4>
                 <div className="mt-2 space-y-1">
@@ -78,13 +78,13 @@ export default function PaymentHistoryItem({ group, canDelete, onDeleted }) {
                       key={e.id}
                       className="flex items-center justify-between text-[14px]"
                     >
-                      <span className="text-white/75">
+                      <span className="text-ink">
                         {e.title}
-                        <span className="text-white/40">
+                        <span className="text-muted">
                           {' '}· {e.paid_by_username || 'Someone'}
                         </span>
                       </span>
-                      <span className="tabular-nums text-white/70">
+                      <span className="tabular-nums text-ink-soft">
                         ${e.amount.toFixed(2)}
                       </span>
                     </div>
@@ -94,7 +94,7 @@ export default function PaymentHistoryItem({ group, canDelete, onDeleted }) {
 
               {detail.settlements.length > 0 && (
                 <div>
-                  <h4 className="text-[12px] font-medium uppercase tracking-wide text-white/45">
+                  <h4 className="eyebrow">
                     Settlement
                   </h4>
                   <div className="mt-2 space-y-2">
@@ -114,7 +114,7 @@ export default function PaymentHistoryItem({ group, canDelete, onDeleted }) {
                 <button
                   onClick={handleDelete}
                   disabled={deleting}
-                  className="text-[13px] font-medium text-red-400/80 transition-colors hover:text-red-400 disabled:opacity-40"
+                  className="text-[13px] font-medium text-clay transition-colors hover:underline disabled:opacity-40"
                 >
                   {deleting ? 'Removing…' : 'Remove from history'}
                 </button>

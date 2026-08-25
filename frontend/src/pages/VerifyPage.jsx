@@ -83,17 +83,17 @@ export default function VerifyPage() {
 
   return (
     <div className="page-enter flex min-h-screen items-center justify-center px-4">
-      <div className="glass-strong w-full max-w-md p-8">
+      <div className="card w-full max-w-md p-8">
         {!needsUsername ? (
           <>
-            <h1 className="text-center text-[28px] font-semibold text-white">
+            <h1 className="text-center text-[28px] font-semibold text-ink">
               Enter verification code
             </h1>
-            <p className="mt-2 text-center text-[15px] text-white/55">
+            <p className="mt-2 text-center text-[15px] text-muted">
               We sent a 6-digit code to{' '}
-              <span className="font-medium text-white/90">{phone}</span>.
+              <span className="font-medium text-ink">{phone}</span>.
               <br />
-              <span className="text-[13px] text-white/30">
+              <span className="text-[13px] text-muted">
                 (Dev mode: check the backend terminal.)
               </span>
             </p>
@@ -111,17 +111,17 @@ export default function VerifyPage() {
             </form>
             <button
               onClick={() => navigate('/login')}
-              className="mt-4 w-full text-center text-sm text-sky-400 transition-colors hover:text-sky-300"
+              className="mt-4 w-full text-center text-sm text-slate-deep transition-colors hover:text-slate-deep"
             >
               Use a different number
             </button>
           </>
         ) : (
           <>
-            <h1 className="text-center text-[28px] font-semibold text-white">
+            <h1 className="text-center text-[28px] font-semibold text-ink">
               Welcome to Settlo!
             </h1>
-            <p className="mt-2 text-center text-[15px] text-white/55">
+            <p className="mt-2 text-center text-[15px] text-muted">
               What should your friends call you?
             </p>
             <form onSubmit={handleSetUsername} className="mt-8 space-y-4">
@@ -132,7 +132,7 @@ export default function VerifyPage() {
                 onChange={(e) => setUsername(e.target.value)}
                 maxLength={50}
                 autoFocus
-                className="input-glass"
+                className="input"
               />
               <ErrorMessage message={error} />
               <Button

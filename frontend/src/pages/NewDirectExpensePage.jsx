@@ -82,10 +82,10 @@ export default function NewDirectExpensePage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-[28px] font-semibold text-white">Friend Expense</h1>
-      <form onSubmit={handleSubmit} className="glass space-y-4 p-6">
+      <h1 className="text-[28px] font-semibold text-ink">Friend Expense</h1>
+      <form onSubmit={handleSubmit} className="card space-y-4 p-6">
         <div>
-          <label className="mb-1.5 block text-[13px] font-medium text-white/50">
+          <label className="mb-1.5 block text-[13px] font-medium text-muted">
             Title
           </label>
           <input
@@ -94,16 +94,16 @@ export default function NewDirectExpensePage() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             maxLength={100}
-            className="input-glass"
+            className="input"
           />
         </div>
 
         <div>
-          <label className="mb-1.5 block text-[13px] font-medium text-white/50">
+          <label className="mb-1.5 block text-[13px] font-medium text-muted">
             Amount
           </label>
           <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/35">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted">
               $
             </span>
             <input
@@ -114,25 +114,25 @@ export default function NewDirectExpensePage() {
               placeholder="0.00"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="input-glass pl-8"
+              className="input pl-8"
             />
           </div>
         </div>
 
         <div>
-          <label className="mb-1.5 block text-[13px] font-medium text-white/50">
+          <label className="mb-1.5 block text-[13px] font-medium text-muted">
             Split with
           </label>
-          <div className="space-y-2 rounded-[14px] border border-white/10 bg-white/[0.04] p-4">
+          <div className="space-y-2 rounded-[14px] border border-rule bg-surface p-4">
             {friends.length === 0 && (
-              <p className="text-sm text-white/45">
+              <p className="text-sm text-muted">
                 Add friends first to split with them.
               </p>
             )}
             {friends.map((f) => (
               <label
                 key={f.id}
-                className="flex cursor-pointer items-center gap-3 text-[15px] text-white/75"
+                className="flex cursor-pointer items-center gap-3 text-[15px] text-ink-soft"
               >
                 <input
                   type="checkbox"
@@ -149,13 +149,13 @@ export default function NewDirectExpensePage() {
         </div>
 
         <div>
-          <label className="mb-1.5 block text-[13px] font-medium text-white/50">
+          <label className="mb-1.5 block text-[13px] font-medium text-muted">
             Paid by
           </label>
           <select
             value={paidBy}
             onChange={(e) => setPaidBy(e.target.value)}
-            className="input-glass"
+            className="input"
           >
             <option value={user?.id}>You</option>
             {payerOptions.map((f) => (

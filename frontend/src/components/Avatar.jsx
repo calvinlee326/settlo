@@ -1,21 +1,21 @@
-const GRADIENTS = [
-  ['#7c3aed', '#0ea5e9'],
-  ['#0ea5e9', '#14b8a6'],
-  ['#ec4899', '#8b5cf6'],
-  ['#f59e0b', '#ef4444'],
-  ['#14b8a6', '#22c55e'],
-  ['#6366f1', '#ec4899'],
-  ['#0ea5e9', '#6366f1'],
-  ['#a855f7', '#f43f5e'],
+// Ink wash has one chromatic note, so avatars vary by tone rather than hue.
+const TONES = [
+  { bg: '#6D8196', fg: '#FFFFE3' },
+  { bg: '#4A4A4A', fg: '#FFFFE3' },
+  { bg: '#5F7A5C', fg: '#FFFFE3' },
+  { bg: '#9C5B4A', fg: '#FFFFE3' },
+  { bg: '#CBCBCB', fg: '#4A4A4A' },
+  { bg: '#55677A', fg: '#FFFFE3' },
+  { bg: '#8E8E7A', fg: '#FFFFE3' },
+  { bg: '#EAEEF2', fg: '#55677A' },
 ];
 
-function gradientFor(name) {
+function toneFor(name) {
   let hash = 0;
   for (let i = 0; i < name.length; i += 1) {
     hash = (hash * 31 + name.charCodeAt(i)) | 0;
   }
-  const [from, to] = GRADIENTS[Math.abs(hash) % GRADIENTS.length];
-  return `linear-gradient(135deg, ${from}, ${to})`;
+  return TONES[Math.abs(hash) % TONES.length];
 }
 
 export default function Avatar({ name, size = 'md' }) {
@@ -28,12 +28,13 @@ export default function Avatar({ name, size = 'md' }) {
     .toUpperCase();
   const sizeClass =
     size === 'sm' ? 'h-8 w-8 text-xs' : size === 'lg' ? 'h-12 w-12 text-base' : 'h-10 w-10 text-sm';
+  const tone = toneFor(display);
 
   return (
     <div
       title={display}
-      style={{ background: gradientFor(display) }}
-      className={`flex shrink-0 items-center justify-center rounded-full font-semibold text-white shadow-[0_2px_12px_rgba(0,0,0,0.3)] ring-1 ring-white/20 ${sizeClass}`}
+      style={{ background: tone.bg, color: tone.fg }}
+      className={`flex shrink-0 items-center justify-center rounded-full font-semibold ${sizeClass}`}
     >
       {initials}
     </div>
