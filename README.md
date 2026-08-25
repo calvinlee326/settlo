@@ -1,6 +1,6 @@
 # Settlo
 
-Split bills for dinners, trips, and more — in groups or one-on-one with friends. Settlo calculates who owes whom with the minimum number of transactions.
+Split bills for dinners, trips, and more — in groups or one-on-one with friends. Settlo calculates who owes whom in as few transactions as possible.
 
 ## Features
 
@@ -103,7 +103,9 @@ Security: OTP is delivered and checked by Twilio Verify, OTP sends are rate-limi
 
 ## Settlement Algorithm
 
-Each member's net balance = total paid − total owed. A greedy max-heap matching pairs the largest creditor with the largest debtor repeatedly, producing the minimum number of transactions to settle the group. Settlements marked as paid are factored into future calculations.
+Each member's net balance = total paid − total owed. A greedy max-heap matching pairs the largest creditor with the largest debtor repeatedly, settling the group in at most n−1 transactions instead of the naive n². Settlements marked as paid are factored into future calculations.
+
+This is a heuristic, not an optimum: finding the true minimum number of transactions is NP-hard (it reduces to set partition), so there are balance sets a subset-matching pass would settle in fewer transfers. The n−1 bound is a worst case that holds for any input, which is the guarantee worth having here.
 
 ## API Overview
 
