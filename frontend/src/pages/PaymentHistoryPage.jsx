@@ -25,13 +25,13 @@ export default function PaymentHistoryPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-[28px] font-semibold text-white">Payment History</h1>
+      <h1 className="text-[28px] font-semibold text-ink">Payment History</h1>
       <ErrorMessage message={error} />
       {loading ? (
         <SkeletonList count={3} />
       ) : settledGroups.length === 0 ? (
-        <div className="rounded-glass border border-dashed border-white/15 bg-white/[0.03] p-8 text-center">
-          <p className="text-[15px] text-white/55">No settled groups yet.</p>
+        <div className="rounded-card border border-dashed border-rule bg-surface p-8 text-center">
+          <p className="text-[15px] text-muted">No settled groups yet.</p>
         </div>
       ) : (
         <div className="space-y-3">

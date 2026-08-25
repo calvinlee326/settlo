@@ -4,36 +4,33 @@ export default {
   theme: {
     extend: {
       colors: {
-        accent: {
-          purple: '#7c3aed',
-          blue: '#0ea5e9',
-          teal: '#14b8a6',
-        },
-        glass: {
-          white: 'rgba(255, 255, 255, 0.06)',
-          'white-strong': 'rgba(255, 255, 255, 0.10)',
-          border: 'rgba(255, 255, 255, 0.12)',
-        },
+        // Two-tone greyscale. Source: #4A4A4A and #CBCBCB.
+        // #CBCBCB is ~1.7:1 on white, so it is a border value only, never text.
+        // Everything between is derived from the same neutral.
+        paper: '#FFFFFF',
+        surface: '#FAFAFA',
+        sunk: '#F2F2F2',
+        ink: '#4A4A4A',
+        'ink-soft': '#6A6A6A',
+        muted: '#757575',
+        rule: '#CBCBCB',
+        'rule-soft': '#E5E5E5',
+        'rule-strong': '#A8A8A8',
       },
-      backdropBlur: {
-        glass: '24px',
-        'glass-strong': '40px',
+      fontFamily: {
+        sans: ['"Instrument Sans"', 'system-ui', '-apple-system', 'sans-serif'],
       },
       borderRadius: {
-        pill: '50px',
-        glass: '20px',
-        'glass-lg': '24px',
+        pill: '999px',
+        card: '10px',
+        field: '8px',
       },
       transitionTimingFunction: {
         spring: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
       },
       keyframes: {
-        float: {
-          '0%': { transform: 'translate(0, 0) scale(1)' },
-          '100%': { transform: 'translate(60px, 40px) scale(1.1)' },
-        },
         fadeSlideUp: {
-          from: { opacity: '0', transform: 'translateY(12px)' },
+          from: { opacity: '0', transform: 'translateY(8px)' },
           to: { opacity: '1', transform: 'translateY(0)' },
         },
         shimmer: {
@@ -46,7 +43,6 @@ export default {
         },
       },
       animation: {
-        float: 'float 26s ease-in-out infinite alternate',
         fadeSlideUp: 'fadeSlideUp 0.3s ease-out both',
         shimmer: 'shimmer 1.6s infinite',
         springScale: 'springScale 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both',

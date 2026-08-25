@@ -43,18 +43,18 @@ export default function LoginPage() {
 
   return (
     <div className="page-enter flex min-h-screen items-center justify-center px-4">
-      <div className="glass-strong w-full max-w-md p-8">
-        <h1 className="text-center text-[28px] font-semibold text-white">
+      <div className="card w-full max-w-md p-8">
+        <h1 className="text-center text-[28px] font-semibold text-ink">
           Settlo
         </h1>
-        <p className="mt-2 text-center text-[15px] text-white/55">
+        <p className="mt-2 text-center text-[15px] text-muted">
           Split bills with friends. Settle up in fewer payments.
         </p>
         <form onSubmit={handleSubmit} className="mt-8 space-y-4">
           <div>
             <label
               htmlFor="phone"
-              className="mb-1.5 block text-[13px] font-medium text-white/50"
+              className="mb-1.5 block text-[13px] font-medium text-muted"
             >
               Phone number (US)
             </label>
@@ -66,7 +66,7 @@ export default function LoginPage() {
               placeholder="909-555-0101"
               value={phone}
               onChange={(e) => setPhone(formatPhone(e.target.value))}
-              className="input-glass"
+              className="input"
             />
           </div>
           <ErrorMessage message={error} />
@@ -79,7 +79,7 @@ export default function LoginPage() {
             {loading ? 'Sending…' : 'Send verification code'}
           </Button>
         </form>
-        <p className="mt-4 text-center text-[13px] text-white/30">
+        <p className="mt-4 text-center text-[13px] text-muted">
           New here? An account is created automatically on first login.
         </p>
       </div>

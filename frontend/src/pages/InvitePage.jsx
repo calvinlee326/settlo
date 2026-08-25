@@ -40,17 +40,17 @@ export default function InvitePage() {
 
   return (
     <div className="space-y-4">
-      <div className="glass-strong p-8 text-center">
-        <p className="text-[15px] text-white/55">
+      <div className="card p-8 text-center">
+        <p className="text-[15px] text-muted">
           You have been invited to join
         </p>
-        <h1 className="mt-2 text-[28px] font-semibold text-white">
+        <h1 className="mt-2 text-[28px] font-semibold text-ink">
           {preview.name}
         </h1>
         {preview.description && (
-          <p className="mt-2 text-[15px] text-white/55">{preview.description}</p>
+          <p className="mt-2 text-[15px] text-muted">{preview.description}</p>
         )}
-        <p className="mt-4 text-[13px] text-white/30">
+        <p className="mt-4 text-[13px] text-muted">
           {preview.member_count} of {preview.max_members} members
           {preview.created_by_username &&
             ` · created by ${preview.created_by_username}`}

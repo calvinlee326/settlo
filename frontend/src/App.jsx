@@ -28,21 +28,9 @@ function Layout({ children }) {
   );
 }
 
-function AmbientBackground() {
-  return (
-    <>
-      <div className="ambient-blob blob-1" />
-      <div className="ambient-blob blob-2" />
-      <div className="ambient-blob blob-3" />
-    </>
-  );
-}
-
 export default function App() {
   return (
-    <>
-      <AmbientBackground />
-      <Routes>
+    <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/verify" element={<VerifyPage />} />
       <Route
@@ -145,8 +133,7 @@ export default function App() {
           </ProtectedRoute>
         }
       />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }

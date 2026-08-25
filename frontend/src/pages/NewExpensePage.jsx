@@ -87,10 +87,10 @@ export default function NewExpensePage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-[28px] font-semibold text-white">Add Expense</h1>
-      <form onSubmit={handleSubmit} className="glass space-y-4 p-6">
+      <h1 className="text-[28px] font-semibold text-ink">Add Expense</h1>
+      <form onSubmit={handleSubmit} className="card space-y-4 p-6">
         <div>
-          <label className="mb-1.5 block text-[13px] font-medium text-white/50">
+          <label className="mb-1.5 block text-[13px] font-medium text-muted">
             Title
           </label>
           <input
@@ -99,16 +99,16 @@ export default function NewExpensePage() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             maxLength={100}
-            className="input-glass"
+            className="input"
           />
         </div>
 
         <div>
-          <label className="mb-1.5 block text-[13px] font-medium text-white/50">
+          <label className="mb-1.5 block text-[13px] font-medium text-muted">
             Amount
           </label>
           <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/35">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted">
               $
             </span>
             <input
@@ -119,19 +119,19 @@ export default function NewExpensePage() {
               placeholder="0.00"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="input-glass pl-8"
+              className="input pl-8"
             />
           </div>
         </div>
 
         <div>
-          <label className="mb-1.5 block text-[13px] font-medium text-white/50">
+          <label className="mb-1.5 block text-[13px] font-medium text-muted">
             Paid by
           </label>
           <select
             value={paidBy}
             onChange={(e) => setPaidBy(e.target.value)}
-            className="input-glass"
+            className="input"
           >
             {members.map((m) => (
               <option key={m.id} value={m.id}>
@@ -144,7 +144,7 @@ export default function NewExpensePage() {
         </div>
 
         <div>
-          <label className="mb-1.5 block text-[13px] font-medium text-white/50">
+          <label className="mb-1.5 block text-[13px] font-medium text-muted">
             Split type
           </label>
           <div className="grid grid-cols-2 gap-2">
@@ -153,10 +153,10 @@ export default function NewExpensePage() {
                 key={type}
                 type="button"
                 onClick={() => setSplitType(type)}
-                className={`min-h-[44px] rounded-[14px] border px-4 py-2.5 text-sm font-semibold transition-all duration-200 ease-spring ${
+                className={`min-h-[44px] rounded-[14px] border px-4 py-2.5 text-sm font-semibold transition-all duration-200  ${
                   splitType === type
-                    ? 'border-violet-400/60 bg-violet-500/20 text-white shadow-[0_0_16px_rgba(124,58,237,0.25)]'
-                    : 'border-white/10 bg-white/5 text-white/55 hover:bg-white/10'
+                    ? 'border-rule-strong bg-sunk text-ink '
+                    : 'border-rule bg-surface text-muted hover:bg-sunk'
                 }`}
               >
                 {type === 'EQUAL' ? 'Equal' : 'Custom'}
@@ -166,14 +166,14 @@ export default function NewExpensePage() {
         </div>
 
         {splitType === 'CUSTOM' && (
-          <div className="space-y-2 rounded-[14px] border border-white/10 bg-white/[0.04] p-4">
+          <div className="space-y-2 rounded-[14px] border border-rule bg-surface p-4">
             {members.map((m) => (
               <div key={m.id} className="flex items-center gap-3">
-                <span className="flex-1 truncate text-[15px] text-white/75">
+                <span className="flex-1 truncate text-[15px] text-ink-soft">
                   {m.id === user?.id ? 'You' : m.username || 'Member'}
                 </span>
                 <div className="relative w-28">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-white/35">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted">
                     $
                   </span>
                   <input
@@ -189,14 +189,14 @@ export default function NewExpensePage() {
                         [m.id]: e.target.value,
                       }))
                     }
-                    className="input-glass py-2 pl-7 pr-2 text-sm"
+                    className="input py-2 pl-7 pr-2 text-sm"
                   />
                 </div>
               </div>
             ))}
             <div
               className={`pt-2 text-right text-sm font-semibold tabular-nums ${
-                customValid ? 'text-emerald-400' : 'text-red-400'
+                customValid ? 'text-ink' : 'text-ink'
               }`}
             >
               {customValid

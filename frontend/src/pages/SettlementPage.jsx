@@ -49,10 +49,10 @@ export default function SettlementPage() {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <h1 className="text-[28px] font-semibold text-white">Settle Up</h1>
+        <h1 className="text-[28px] font-semibold text-ink">Settle Up</h1>
         <Link
           to={`/groups/${id}`}
-          className="text-sm font-medium text-sky-400 transition-colors hover:text-sky-300"
+          className="text-sm font-medium text-muted transition-colors hover:text-ink"
         >
           Back to group
         </Link>
@@ -60,8 +60,8 @@ export default function SettlementPage() {
 
       <ErrorMessage message={error} />
 
-      <div className="glass p-5">
-        <h2 className="text-[13px] font-medium uppercase tracking-wide text-white/50">
+      <div className="card p-5">
+        <h2 className="text-[13px] font-medium uppercase tracking-wide text-muted">
           Balances
         </h2>
         <div className="mt-3 space-y-2">
@@ -70,28 +70,28 @@ export default function SettlementPage() {
               key={b.user_id}
               className="flex items-center justify-between text-[15px]"
             >
-              <span className="text-white/75">{b.username || 'Unknown'}</span>
+              <span className="text-ink-soft">{b.username || 'Unknown'}</span>
               <span
-                className={`font-semibold tabular-nums ${
+                className={`tabular-nums ${
                   b.balance > 0.004
-                    ? 'text-emerald-400'
+                    ? 'font-bold text-ink'
                     : b.balance < -0.004
-                      ? 'text-red-400'
-                      : 'text-white/30'
+                      ? 'font-normal text-ink'
+                      : 'font-normal text-muted'
                 }`}
               >
-                {b.balance > 0.004 ? '+' : ''}
-                ${b.balance.toFixed(2)}
+                {b.balance > 0.004 ? '+' : b.balance < -0.004 ? '-' : ''}$
+                {Math.abs(b.balance).toFixed(2)}
               </span>
             </div>
           ))}
         </div>
       </div>
 
-      <h2 className="text-lg font-medium text-white/90">Who pays whom</h2>
+      <h2 className="text-lg font-medium text-ink">Who pays whom</h2>
       {settlements.length === 0 ? (
-        <div className="rounded-glass border border-dashed border-white/15 bg-white/[0.03] p-8 text-center">
-          <p className="text-[15px] text-white/55">
+        <div className="rounded-card border border-dashed border-rule bg-surface p-8 text-center">
+          <p className="text-[15px] text-muted">
             All even — nobody owes anything.
           </p>
         </div>

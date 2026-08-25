@@ -38,10 +38,10 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-[28px] font-semibold text-white">Settings</h1>
-      <form onSubmit={handleSave} className="glass space-y-4 p-6">
+      <h1 className="text-[28px] font-semibold text-ink">Settings</h1>
+      <form onSubmit={handleSave} className="card space-y-4 p-6">
         <div>
-          <label className="mb-1.5 block text-[13px] font-medium text-white/50">
+          <label className="mb-1.5 block text-[13px] font-medium text-muted">
             Name
           </label>
           <input
@@ -50,11 +50,11 @@ export default function SettingsPage() {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             maxLength={50}
-            className="input-glass"
+            className="input"
           />
         </div>
         <ErrorMessage message={error} />
-        {notice && <p className="text-sm text-emerald-400">{notice}</p>}
+        {notice && <p className="text-sm text-ink">{notice}</p>}
         <div className="flex gap-3">
           <Button
             type="button"

@@ -48,29 +48,29 @@ export default function HomePage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-[28px] font-semibold text-white">My Groups</h1>
+      <h1 className="text-[28px] font-semibold text-ink">My Groups</h1>
       <ErrorMessage message={error} />
       {invites.length > 0 && (
         <div className="space-y-2">
-          <h2 className="text-lg font-medium text-white/90">Group invitations</h2>
+          <h2 className="text-lg font-medium text-ink">Group invitations</h2>
           {invites.map((inv) => (
-            <div key={inv.id} className="glass flex items-center justify-between p-4">
+            <div key={inv.id} className="card flex items-center justify-between p-4">
               <div>
-                <p className="text-[15px] font-medium text-white/85">{inv.group_name}</p>
-                <p className="text-[13px] text-white/45">
+                <p className="text-[15px] font-medium text-ink">{inv.group_name}</p>
+                <p className="text-[13px] text-muted">
                   from {inv.invited_by_username || 'someone'}
                 </p>
               </div>
               <div className="flex gap-2">
                 <button
                   onClick={() => respondInvite(inv.id, 'accept')}
-                  className="rounded-xl bg-violet-500 px-3 py-1.5 text-[13px] font-medium text-white hover:opacity-80"
+                  className="rounded-xl bg-ink px-3 py-1.5 text-[13px] font-medium text-white hover:opacity-80"
                 >
                   Join
                 </button>
                 <button
                   onClick={() => respondInvite(inv.id, 'decline')}
-                  className="rounded-xl bg-white/10 px-3 py-1.5 text-[13px] font-medium text-white/70 hover:opacity-80"
+                  className="rounded-xl bg-sunk px-3 py-1.5 text-[13px] font-medium text-ink-soft hover:opacity-80"
                 >
                   Decline
                 </button>
@@ -82,27 +82,27 @@ export default function HomePage() {
       {loading ? (
         <SkeletonList count={3} />
       ) : activeGroups.length === 0 && !error ? (
-        <div className="space-y-4 rounded-glass border border-dashed border-white/15 bg-white/[0.03] p-6 text-center">
+        <div className="space-y-4 rounded-card border border-dashed border-rule bg-surface p-6 text-center">
           <div>
-            <p className="text-[17px] font-semibold text-white">Welcome to Settlo</p>
-            <p className="mt-1 text-[14px] text-white/55">
+            <p className="text-[17px] font-semibold text-ink">Welcome to Settlo</p>
+            <p className="mt-1 text-[14px] text-muted">
               Split bills with friends and settle up with the fewest payments.
             </p>
           </div>
-          <ol className="mx-auto max-w-xs space-y-2 text-left text-[14px] text-white/70">
+          <ol className="mx-auto max-w-xs space-y-2 text-left text-[14px] text-ink-soft">
             <li>
-              <span className="font-semibold text-violet-300">1.</span> Create a group and invite people by phone or QR code.
+              <span className="font-semibold text-ink">1.</span> Create a group and invite people by phone or QR code.
             </li>
             <li>
-              <span className="font-semibold text-violet-300">2.</span> Add expenses — split equally or with custom amounts.
+              <span className="font-semibold text-ink">2.</span> Add expenses — split equally or with custom amounts.
             </li>
             <li>
-              <span className="font-semibold text-violet-300">3.</span> Settle up to see who pays whom.
+              <span className="font-semibold text-ink">3.</span> Settle up to see who pays whom.
             </li>
           </ol>
           <Link
             to="/groups/new"
-            className="inline-block rounded-xl bg-violet-500 px-5 py-2.5 text-[14px] font-medium text-white transition-opacity hover:opacity-80"
+            className="inline-block rounded-xl bg-ink px-5 py-2.5 text-[14px] font-medium text-white transition-opacity hover:opacity-80"
           >
             Create your first group
           </Link>
