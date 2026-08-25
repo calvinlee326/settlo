@@ -4,22 +4,18 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Ink wash. Source palette: #FFFFE3 #4A4A4A #CBCBCB #6D8196
-        paper: '#FFFFE3',
-        surface: '#FFFEF4',
-        sunk: '#F4F4DA',
+        // Two-tone greyscale. Source: #4A4A4A and #CBCBCB.
+        // #CBCBCB is ~1.7:1 on white, so it is a border value only, never text.
+        // Everything between is derived from the same neutral.
+        paper: '#FFFFFF',
+        surface: '#FAFAFA',
+        sunk: '#F2F2F2',
         ink: '#4A4A4A',
-        'ink-soft': '#5E5E5E',
-        muted: '#767676',
+        'ink-soft': '#6A6A6A',
+        muted: '#757575',
         rule: '#CBCBCB',
-        'rule-soft': '#E2E2CE',
-        slate: '#6D8196',
-        'slate-deep': '#55677A',
-        'slate-tint': '#EAEEF2',
-        moss: '#5F7A5C',
-        'moss-tint': '#EAF0E8',
-        clay: '#9C5B4A',
-        'clay-tint': '#F6E8E3',
+        'rule-soft': '#E5E5E5',
+        'rule-strong': '#A8A8A8',
       },
       fontFamily: {
         sans: ['"Instrument Sans"', 'system-ui', '-apple-system', 'sans-serif'],

@@ -4,9 +4,8 @@ export default function ExpenseItem({ expense, canDelete, onDelete, style }) {
   return (
     <div
       style={style}
-      className="card stagger-item relative flex items-center gap-3 overflow-hidden p-4 pl-5 transition-colors hover:border-slate"
+      className="card stagger-item relative flex items-center gap-3 overflow-hidden p-4 pl-5 transition-colors hover:border-rule-strong"
     >
-      <span className="row-marker" />
       <Avatar name={expense.paid_by_username || '?'} size="sm" />
       <div className="min-w-0 flex-1">
         <p className="truncate text-[15px] font-medium text-ink">
@@ -29,7 +28,7 @@ export default function ExpenseItem({ expense, canDelete, onDelete, style }) {
         <button
           onClick={onDelete}
           aria-label="Delete expense"
-          className="ml-1 text-rule transition-colors hover:text-clay"
+          className="ml-1 text-rule transition-colors hover:text-ink"
         >
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

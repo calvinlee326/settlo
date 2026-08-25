@@ -54,7 +54,7 @@ export default function SettingsPage() {
           />
         </div>
         <ErrorMessage message={error} />
-        {notice && <p className="text-sm text-moss">{notice}</p>}
+        {notice && <p className="text-sm text-ink">{notice}</p>}
         <div className="flex gap-3">
           <Button
             type="button"

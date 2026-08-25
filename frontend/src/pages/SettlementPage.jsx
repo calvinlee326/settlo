@@ -52,7 +52,7 @@ export default function SettlementPage() {
         <h1 className="text-[28px] font-semibold text-ink">Settle Up</h1>
         <Link
           to={`/groups/${id}`}
-          className="text-sm font-medium text-slate-deep transition-colors hover:text-slate-deep"
+          className="text-sm font-medium text-muted transition-colors hover:text-ink"
         >
           Back to group
         </Link>
@@ -72,12 +72,12 @@ export default function SettlementPage() {
             >
               <span className="text-ink-soft">{b.username || 'Unknown'}</span>
               <span
-                className={`font-semibold tabular-nums ${
+                className={`tabular-nums ${
                   b.balance > 0.004
-                    ? 'text-moss'
+                    ? 'font-bold text-ink'
                     : b.balance < -0.004
-                      ? 'text-clay'
-                      : 'text-muted'
+                      ? 'font-normal text-ink'
+                      : 'font-normal text-muted'
                 }`}
               >
                 {b.balance > 0.004 ? '+' : b.balance < -0.004 ? '-' : ''}$

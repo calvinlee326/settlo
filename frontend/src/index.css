@@ -10,7 +10,7 @@
   }
 
   body {
-    background: #ffffe3;
+    background: #ffffff;
     color: #4a4a4a;
     font-family: 'Instrument Sans', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -23,7 +23,7 @@
   }
 
   :focus-visible {
-    outline: 2px solid #55677a;
+    outline: 2px solid #4a4a4a;
     outline-offset: 2px;
   }
 }
@@ -31,14 +31,14 @@
 @layer components {
   /* ── Surfaces ───────────────────────────────────── */
   .card {
-    background: #fffef4;
+    background: #fafafa;
     border: 1px solid #cbcbcb;
     border-radius: 10px;
   }
 
   .card-quiet {
     background: transparent;
-    border: 1px solid #e2e2ce;
+    border: 1px solid #e5e5e5;
     border-radius: 10px;
   }
 
@@ -48,7 +48,7 @@
     font-weight: 600;
     letter-spacing: 0.11em;
     text-transform: uppercase;
-    color: #767676;
+    color: #757575;
   }
 
   /* ── Buttons ────────────────────────────────────── */
@@ -75,14 +75,14 @@
   }
 
   .btn-primary {
-    background: #55677a;
-    border: 1px solid #55677a;
-    color: #ffffe3;
+    background: #4a4a4a;
+    border: 1px solid #4a4a4a;
+    color: #ffffff;
   }
 
   .btn-primary:hover:not(:disabled) {
-    background: #43505f;
-    border-color: #43505f;
+    background: #333333;
+    border-color: #333333;
   }
 
   .btn-secondary {
@@ -92,30 +92,31 @@
   }
 
   .btn-secondary:hover:not(:disabled) {
-    border-color: #6d8196;
-    color: #55677a;
+    border-color: #4a4a4a;
+    color: #333333;
   }
 
+  /* Kept as an alias: with one ink there is no second emphasis level. */
   .btn-accent {
-    background: #6d8196;
-    border: 1px solid #6d8196;
-    color: #ffffe3;
+    background: #4a4a4a;
+    border: 1px solid #4a4a4a;
+    color: #ffffff;
   }
 
   .btn-accent:hover:not(:disabled) {
-    background: #55677a;
-    border-color: #55677a;
+    background: #333333;
+    border-color: #333333;
   }
 
   .btn-danger {
     background: transparent;
-    border: 1px solid #d8bfb6;
-    color: #9c5b4a;
+    border: 1px solid #cbcbcb;
+    color: #4a4a4a;
   }
 
   .btn-danger:hover:not(:disabled) {
-    background: #f6e8e3;
-    border-color: #9c5b4a;
+    background: #f2f2f2;
+    border-color: #4a4a4a;
   }
 
   /* ── Floating Action Button ─────────────────────── */
@@ -130,8 +131,8 @@
     width: 52px;
     height: 52px;
     border-radius: 50%;
-    background: #55677a;
-    color: #ffffe3;
+    background: #4a4a4a;
+    color: #ffffff;
     font-size: 24px;
     font-weight: 300;
     transition:
@@ -141,7 +142,7 @@
   }
 
   .fab:hover {
-    background: #43505f;
+    background: #333333;
   }
 
   .fab:active {
@@ -156,7 +157,7 @@
     right: 0;
     z-index: 40;
     height: 60px;
-    background: #ffffe3;
+    background: #ffffff;
     border-bottom: 1px solid transparent;
     transition: border-color 0.2s ease;
   }
@@ -168,7 +169,7 @@
   /* ── Inputs ─────────────────────────────────────── */
   .input {
     width: 100%;
-    background: #fffef4;
+    background: #fafafa;
     border: 1px solid #cbcbcb;
     border-radius: 8px;
     color: #4a4a4a;
@@ -180,17 +181,17 @@
   }
 
   .input::placeholder {
-    color: #9a9a9a;
+    color: #8f8f8f;
   }
 
   .input:focus {
     outline: none;
-    border-color: #6d8196;
-    box-shadow: 0 0 0 3px rgba(109, 129, 150, 0.16);
+    border-color: #4a4a4a;
+    box-shadow: 0 0 0 3px rgba(74, 74, 74, 0.14);
   }
 
   select.input option {
-    background: #fffef4;
+    background: #fafafa;
     color: #4a4a4a;
   }
 
@@ -202,7 +203,7 @@
     font-size: 22px;
     font-weight: 600;
     color: #4a4a4a;
-    background: #fffef4;
+    background: #fafafa;
     border: 1px solid #cbcbcb;
     border-radius: 8px;
     transition:
@@ -212,13 +213,13 @@
 
   .otp-box:focus {
     outline: none;
-    border-color: #6d8196;
-    box-shadow: 0 0 0 3px rgba(109, 129, 150, 0.16);
+    border-color: #4a4a4a;
+    box-shadow: 0 0 0 3px rgba(74, 74, 74, 0.14);
   }
 
   .otp-box.filled {
-    border-color: #6d8196;
-    background: #eaeef2;
+    border-color: #4a4a4a;
+    background: #f2f2f2;
   }
 
   /* ── Motion ─────────────────────────────────────── */
@@ -230,23 +231,13 @@
     animation: fadeSlideUp 0.35s ease-out both;
   }
 
-  /* ── Row marker (ExpenseItem / SettlementItem) ──── */
-  .row-marker {
-    position: absolute;
-    left: 0;
-    top: 14%;
-    bottom: 14%;
-    width: 2px;
-    background: #6d8196;
-  }
-
   /* ── Skeleton loading ───────────────────────────── */
   .skeleton-card {
     position: relative;
     overflow: hidden;
     height: 84px;
-    background: #f4f4da;
-    border: 1px solid #e2e2ce;
+    background: #f2f2f2;
+    border: 1px solid #e5e5e5;
     border-radius: 10px;
   }
 
@@ -270,7 +261,7 @@
     height: 30px;
     border-radius: 50%;
     border: 2px solid #cbcbcb;
-    border-top-color: #6d8196;
+    border-top-color: #4a4a4a;
     animation: spinner-spin 0.7s linear infinite;
   }
 }

@@ -82,7 +82,7 @@ export default function Navbar() {
         >
           Settlo
           {inviteCount > 0 && (
-            <span className="absolute -right-3 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-clay px-1 text-[10px] font-bold leading-none text-paper">
+            <span className="absolute -right-3 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-ink px-1 text-[10px] font-bold leading-none text-white">
               {inviteCount > 99 ? '99+' : inviteCount}
             </span>
           )}
@@ -94,7 +94,7 @@ export default function Navbar() {
           >
             Friends
             {requestCount > 0 && (
-              <span className="absolute -right-3 -top-2 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-clay px-1 text-[10px] font-bold leading-none text-paper">
+              <span className="absolute -right-3 -top-2 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-ink px-1 text-[10px] font-bold leading-none text-white">
                 {requestCount > 99 ? '99+' : requestCount}
               </span>
             )}
@@ -138,7 +138,7 @@ export default function Navbar() {
                   </button>
                   <button
                     onClick={handleLogout}
-                    className="block w-full px-4 py-2.5 text-left text-sm text-clay transition-colors hover:bg-sunk"
+                    className="block w-full px-4 py-2.5 text-left text-sm text-ink transition-colors hover:bg-sunk"
                   >
                     Logout
                   </button>

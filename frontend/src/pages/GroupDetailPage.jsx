@@ -159,14 +159,14 @@ export default function GroupDetailPage() {
           {isCreator ? (
             <button
               onClick={handleDeleteGroup}
-              className="text-[13px] font-medium text-clay transition-colors hover:text-clay"
+              className="text-[13px] font-medium text-muted transition-colors hover:text-ink"
             >
               Delete
             </button>
           ) : !isSettled ? (
             <button
               onClick={leaveGroup}
-              className="text-[13px] font-medium text-clay transition-colors hover:text-clay"
+              className="text-[13px] font-medium text-muted transition-colors hover:text-ink"
             >
               Leave
             </button>
@@ -180,7 +180,7 @@ export default function GroupDetailPage() {
                   <button
                     onClick={() => removeMember(member.id, member.username || 'this member')}
                     aria-label={`Remove ${member.username || 'member'}`}
-                    className="absolute -right-1 -top-1 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-clay text-[11px] font-bold leading-none text-ink ring-2 ring-black/30"
+                    className="absolute -right-1 -top-1 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-ink text-[11px] font-bold leading-none text-white ring-2 ring-white"
                   >
                     ×
                   </button>
@@ -194,7 +194,7 @@ export default function GroupDetailPage() {
           ))}
           <button
             onClick={handleInvite}
-            className="flex h-8 w-8 shrink-0 items-center justify-center self-start rounded-full border-2 border-dashed border-slate text-muted transition-colors hover:border-slate hover:text-slate-deep"
+            className="flex h-8 w-8 shrink-0 items-center justify-center self-start rounded-full border-2 border-dashed border-rule-strong text-muted transition-colors hover:border-rule-strong hover:text-ink"
             aria-label="Show invite link"
           >
             +
@@ -205,7 +205,7 @@ export default function GroupDetailPage() {
       <ErrorMessage message={error} />
 
       {isSettled && (
-        <div className="rounded-card border border-moss/30 bg-moss-tint p-3 text-center text-[14px] text-moss">
+        <div className="rounded-card border border-rule bg-sunk p-3 text-center text-[14px] text-ink">
           Settled — this group is archived in Payment History.
         </div>
       )}
@@ -279,12 +279,12 @@ export default function GroupDetailPage() {
                 <button
                   onClick={sendPhoneInvite}
                   disabled={!invitePhone.trim()}
-                  className="shrink-0 rounded-xl bg-slate-deep px-4 py-2 text-[13px] font-medium text-ink transition-opacity hover:opacity-80 disabled:opacity-40"
+                  className="shrink-0 rounded-xl bg-ink px-4 py-2 text-[13px] font-medium text-white transition-opacity hover:opacity-80 disabled:opacity-40"
                 >
                   Invite
                 </button>
               </div>
-              {inviteNotice && <p className="text-[12px] text-moss">{inviteNotice}</p>}
+              {inviteNotice && <p className="text-[12px] text-ink">{inviteNotice}</p>}
             </div>
             {(() => {
               if (friends.length === 0) return null;
@@ -314,7 +314,7 @@ export default function GroupDetailPage() {
                       <button
                         onClick={() => { addFriend(inviteFriendId); setInviteFriendId(''); }}
                         disabled={!inviteFriendId}
-                        className="shrink-0 rounded-xl bg-slate-deep px-4 py-2 text-[13px] font-medium text-ink transition-opacity hover:opacity-80 disabled:opacity-40"
+                        className="shrink-0 rounded-xl bg-ink px-4 py-2 text-[13px] font-medium text-white transition-opacity hover:opacity-80 disabled:opacity-40"
                       >
                         Add
                       </button>

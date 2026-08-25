@@ -114,7 +114,7 @@ export default function PaymentHistoryItem({ group, canDelete, onDeleted }) {
                 <button
                   onClick={handleDelete}
                   disabled={deleting}
-                  className="text-[13px] font-medium text-clay transition-colors hover:underline disabled:opacity-40"
+                  className="text-[13px] font-medium text-ink transition-colors hover:underline disabled:opacity-40"
                 >
                   {deleting ? 'Removing…' : 'Remove from history'}
                 </button>

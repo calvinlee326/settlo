@@ -87,7 +87,7 @@ export default function FriendsPage() {
     <div className="space-y-4">
       <h1 className="text-[28px] font-semibold text-ink">Friends</h1>
       <ErrorMessage message={error} />
-      {notice && <p className="text-sm text-moss">{notice}</p>}
+      {notice && <p className="text-sm text-ink">{notice}</p>}
 
       <div className="card space-y-3 p-4">
         <p className="text-[13px] font-medium text-muted">Add a friend</p>
@@ -104,7 +104,7 @@ export default function FriendsPage() {
           <button
             onClick={addFriend}
             disabled={!phone.trim()}
-            className="shrink-0 rounded-xl bg-slate-deep px-4 py-2 text-[14px] font-medium text-ink transition-opacity hover:opacity-80 disabled:opacity-40"
+            className="shrink-0 rounded-xl bg-ink px-4 py-2 text-[14px] font-medium text-white transition-opacity hover:opacity-80 disabled:opacity-40"
           >
             Add
           </button>
@@ -157,9 +157,9 @@ export default function FriendsPage() {
                 <p
                   className={`text-sm tabular-nums ${
                     f.net_balance > 0
-                      ? 'text-moss'
+                      ? 'text-ink'
                       : f.net_balance < 0
-                        ? 'text-clay'
+                        ? 'text-ink'
                         : 'text-muted'
                   }`}
                 >

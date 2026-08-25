@@ -64,7 +64,7 @@ export default function HomePage() {
               <div className="flex gap-2">
                 <button
                   onClick={() => respondInvite(inv.id, 'accept')}
-                  className="rounded-xl bg-slate-deep px-3 py-1.5 text-[13px] font-medium text-ink hover:opacity-80"
+                  className="rounded-xl bg-ink px-3 py-1.5 text-[13px] font-medium text-white hover:opacity-80"
                 >
                   Join
                 </button>
@@ -91,18 +91,18 @@ export default function HomePage() {
           </div>
           <ol className="mx-auto max-w-xs space-y-2 text-left text-[14px] text-ink-soft">
             <li>
-              <span className="font-semibold text-slate-deep">1.</span> Create a group and invite people by phone or QR code.
+              <span className="font-semibold text-ink">1.</span> Create a group and invite people by phone or QR code.
             </li>
             <li>
-              <span className="font-semibold text-slate-deep">2.</span> Add expenses — split equally or with custom amounts.
+              <span className="font-semibold text-ink">2.</span> Add expenses — split equally or with custom amounts.
             </li>
             <li>
-              <span className="font-semibold text-slate-deep">3.</span> Settle up to see who pays whom.
+              <span className="font-semibold text-ink">3.</span> Settle up to see who pays whom.
             </li>
           </ol>
           <Link
             to="/groups/new"
-            className="inline-block rounded-xl bg-slate-deep px-5 py-2.5 text-[14px] font-medium text-ink transition-opacity hover:opacity-80"
+            className="inline-block rounded-xl bg-ink px-5 py-2.5 text-[14px] font-medium text-white transition-opacity hover:opacity-80"
           >
             Create your first group
           </Link>

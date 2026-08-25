@@ -155,7 +155,7 @@ export default function NewExpensePage() {
                 onClick={() => setSplitType(type)}
                 className={`min-h-[44px] rounded-[14px] border px-4 py-2.5 text-sm font-semibold transition-all duration-200  ${
                   splitType === type
-                    ? 'border-slate bg-slate-tint text-ink '
+                    ? 'border-rule-strong bg-sunk text-ink '
                     : 'border-rule bg-surface text-muted hover:bg-sunk'
                 }`}
               >
@@ -196,7 +196,7 @@ export default function NewExpensePage() {
             ))}
             <div
               className={`pt-2 text-right text-sm font-semibold tabular-nums ${
-                customValid ? 'text-moss' : 'text-clay'
+                customValid ? 'text-ink' : 'text-ink'
               }`}
             >
               {customValid

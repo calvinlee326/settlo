@@ -7,11 +7,10 @@ export default function SettlementItem({ settlement, onPay, paying, style }) {
       style={style}
       className={`stagger-item relative flex items-center gap-3 overflow-hidden rounded-card border p-4 pl-5 transition-colors ${
         settlement.is_paid
-          ? 'border-moss/30 bg-moss-tint'
-          : 'card hover:border-slate'
+          ? 'border-rule bg-sunk'
+          : 'card hover:border-rule-strong'
       }`}
     >
-      {!settlement.is_paid && <span className="row-marker" />}
       <div className="flex items-center -space-x-2">
         <Avatar name={settlement.from_username || '?'} size="sm" />
         <Avatar name={settlement.to_username || '?'} size="sm" />
@@ -31,15 +30,15 @@ export default function SettlementItem({ settlement, onPay, paying, style }) {
           </span>
         </p>
         <p
-          className={`text-lg font-bold tabular-nums ${
-            settlement.is_paid ? 'text-moss line-through' : 'text-slate-deep'
+          className={`text-lg font-bold tabular-nums text-ink ${
+            settlement.is_paid ? 'line-through' : ''
           }`}
         >
           ${settlement.amount.toFixed(2)}
         </p>
       </div>
       {settlement.is_paid ? (
-        <span className="flex shrink-0 items-center gap-1 rounded-pill border border-moss/40 px-3 py-1 text-xs font-semibold text-moss">
+        <span className="flex shrink-0 items-center gap-1 rounded-pill border border-rule px-3 py-1 text-xs font-semibold text-ink">
           <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>

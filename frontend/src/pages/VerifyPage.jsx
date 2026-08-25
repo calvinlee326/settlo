@@ -111,7 +111,7 @@ export default function VerifyPage() {
             </form>
             <button
               onClick={() => navigate('/login')}
-              className="mt-4 w-full text-center text-sm text-slate-deep transition-colors hover:text-slate-deep"
+              className="mt-4 w-full text-center text-sm text-muted transition-colors hover:text-ink"
             >
               Use a different number
             </button>

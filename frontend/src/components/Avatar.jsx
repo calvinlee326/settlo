@@ -1,13 +1,12 @@
-// Ink wash has one chromatic note, so avatars vary by tone rather than hue.
+// Greyscale ramp between the two source values, so avatars stay distinguishable
+// without introducing hue. Text colour is picked per step to stay legible.
 const TONES = [
-  { bg: '#6D8196', fg: '#FFFFE3' },
-  { bg: '#4A4A4A', fg: '#FFFFE3' },
-  { bg: '#5F7A5C', fg: '#FFFFE3' },
-  { bg: '#9C5B4A', fg: '#FFFFE3' },
+  { bg: '#4A4A4A', fg: '#FFFFFF' },
+  { bg: '#8A8A8A', fg: '#FFFFFF' },
   { bg: '#CBCBCB', fg: '#4A4A4A' },
-  { bg: '#55677A', fg: '#FFFFE3' },
-  { bg: '#8E8E7A', fg: '#FFFFE3' },
-  { bg: '#EAEEF2', fg: '#55677A' },
+  { bg: '#6A6A6A', fg: '#FFFFFF' },
+  { bg: '#A8A8A8', fg: '#FFFFFF' },
+  { bg: '#E5E5E5', fg: '#4A4A4A' },
 ];
 
 function toneFor(name) {
@@ -34,7 +33,7 @@ export default function Avatar({ name, size = 'md' }) {
     <div
       title={display}
       style={{ background: tone.bg, color: tone.fg }}
-      className={`flex shrink-0 items-center justify-center rounded-full font-semibold ${sizeClass}`}
+      className={`flex shrink-0 items-center justify-center rounded-full font-semibold ring-1 ring-rule ${sizeClass}`}
     >
       {initials}
     </div>
