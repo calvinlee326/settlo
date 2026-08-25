@@ -24,6 +24,11 @@ def create_direct_expense(
     db: Session = Depends(get_db),
 ):
     participants = set(body.participant_ids)
+    if current_user.id not in participants:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You must be a participant in a direct expense",
+        )
     if body.paid_by not in participants:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
