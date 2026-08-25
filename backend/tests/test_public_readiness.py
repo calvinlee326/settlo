@@ -2,6 +2,8 @@ import os
 import sys
 import unittest
 import importlib
+from collections import deque
+from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 from types import SimpleNamespace
@@ -226,6 +228,28 @@ class PublicReadinessTest(unittest.TestCase):
         )
         self.assertEqual(len(service.verifications.calls), 2)
         print_mock.assert_not_called()
+
+    def test_ip_limiter_blocks_and_sweeps_stale_entries(self):
+        request = SimpleNamespace(client=SimpleNamespace(host="203.0.113.7"))
+        auth_router._otp_ip_attempts.clear()
+
+        with patch.object(auth_router.settings, "OTP_IP_SEND_LIMIT", 2):
+            auth_router._check_otp_ip_limit(request)
+            auth_router._check_otp_ip_limit(request)
+            with self.assertRaises(otp_service.OTPLockedError):
+                auth_router._check_otp_ip_limit(request)
+
+        stale = datetime(2020, 1, 1)
+        for n in range(auth_router.OTP_IP_SWEEP_THRESHOLD + 1):
+            auth_router._otp_ip_attempts[f"198.51.100.{n}"] = deque([stale])
+        auth_router._check_otp_ip_limit(
+            SimpleNamespace(client=SimpleNamespace(host="203.0.113.8"))
+        )
+
+        self.assertEqual(
+            sorted(auth_router._otp_ip_attempts), ["203.0.113.7", "203.0.113.8"]
+        )
+        auth_router._otp_ip_attempts.clear()
 
     def test_generate_otp_uses_twilio_verify(self):
         phone_number = "+15550000005"

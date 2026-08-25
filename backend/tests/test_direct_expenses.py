@@ -132,6 +132,20 @@ class DirectExpenseApiTest(unittest.TestCase):
         )
         self.assertEqual(res.status_code, 403)
 
+    def test_creator_must_be_a_participant(self):
+        res = self.client.post(
+            "/api/direct-expenses",
+            json={
+                "title": "Dinner I was not at",
+                "amount": "20.00",
+                "paid_by": self.b.id,
+                "split_type": "EQUAL",
+                "participant_ids": [self.b.id, self.c.id],
+            },
+            headers=self._auth(self.a),
+        )
+        self.assertEqual(res.status_code, 403)
+
     def test_friend_expenses_listing(self):
         self.client.post(
             "/api/direct-expenses",

@@ -1,4 +1,4 @@
-from collections import defaultdict, deque
+from collections import deque
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -34,14 +34,27 @@ from app.services.otp import (
 )
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
-_otp_ip_attempts: dict[str, deque[datetime]] = defaultdict(deque)
+
+# ponytail: in-process counters, so the limit is per worker and resets on deploy.
+# Move to Redis if the backend ever runs more than one instance.
+_otp_ip_attempts: dict[str, deque[datetime]] = {}
+OTP_IP_SWEEP_THRESHOLD = 1024
 
 
 def _check_otp_ip_limit(request: Request) -> None:
     ip_address = request.client.host if request.client else "unknown"
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     cutoff = now - timedelta(minutes=settings.OTP_SEND_WINDOW_MINUTES)
-    attempts = _otp_ip_attempts[ip_address]
+
+    if len(_otp_ip_attempts) > OTP_IP_SWEEP_THRESHOLD:
+        for stale in [
+            ip
+            for ip, seen in _otp_ip_attempts.items()
+            if not seen or seen[-1] < cutoff
+        ]:
+            del _otp_ip_attempts[stale]
+
+    attempts = _otp_ip_attempts.setdefault(ip_address, deque())
     while attempts and attempts[0] < cutoff:
         attempts.popleft()
     if len(attempts) >= settings.OTP_IP_SEND_LIMIT:
