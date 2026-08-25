@@ -26,18 +26,16 @@ cd backend
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env   # then set SECRET_KEY and Twilio Verify values
+cp .env.example .env   # then edit it, see below
 alembic upgrade head
 uvicorn app.main:app --reload
 ```
 
 The API runs at http://localhost:8000 (docs at http://localhost:8000/docs).
 
-For local SQLite development, set `DATABASE_URL=sqlite:///./settlo.db`. For production, use a managed PostgreSQL URL such as `postgresql+psycopg://...`.
+`.env.example` ships a PostgreSQL URL. For local development set `DATABASE_URL=sqlite:///./settlo.db` and a `SECRET_KEY` of at least 32 characters. For production, use a managed PostgreSQL URL such as `postgresql+psycopg://...`.
 
-```bash
-alembic upgrade head
-```
+To log in locally without a Twilio account, also set `DEV_OTP_CODE=000000`. `/verify` then accepts that fixed code for any phone number and no SMS is sent. Startup rejects it unless `DATABASE_URL` is SQLite, so it cannot be turned on in production.
 
 ### Frontend
 
@@ -54,6 +52,17 @@ The app runs at http://localhost:5173.
 ```bash
 docker compose up
 ```
+
+Both services read `backend/.env`, so create it first.
+
+### Tests
+
+```bash
+cd backend
+python -m unittest discover -s tests -t .
+```
+
+The suite runs against in-memory SQLite and needs no Twilio credentials or running server.
 
 ## Deployment
 
@@ -76,7 +85,7 @@ Set these variables on the Railway service:
 
 ## Twilio Verify Setup
 
-OTP delivery and verification are handled entirely by Twilio Verify — the backend never generates or stores OTP codes itself, and sending OTPs fails if Twilio is not configured.
+OTP delivery and verification are handled entirely by Twilio Verify — the backend never generates or stores OTP codes itself, and sending OTPs fails if Twilio is not configured. The one exception is the local `DEV_OTP_CODE` bypass described under Quick Start.
 
 1. Create an account at [twilio.com](https://www.twilio.com) and copy the **Account SID** and **Auth Token** from the Console dashboard.
 2. In the Console, go to **Verify → Services**, create a new Verify Service, and copy its **Service SID** (starts with `VA`).
@@ -125,8 +134,10 @@ This is a heuristic, not an optimum: finding the true minimum number of transact
 | POST | /api/groups/{id}/members | Add a friend to the group |
 | DELETE | /api/groups/{id}/members/{uid} | Remove member / leave group |
 | POST/GET | /api/groups/{id}/expenses/ | Create / list expenses |
+| PUT | /api/groups/{id}/expenses/{eid} | Edit expense |
 | DELETE | /api/groups/{id}/expenses/{eid} | Delete expense |
 | GET | /api/groups/{id}/settlements/ | Calculate settlements |
+| POST | /api/groups/{id}/settlements/confirm | Settle the group and archive it |
 | POST | /api/groups/{id}/settlements/{sid}/pay | Mark paid |
 | POST/GET | /api/group-invitations | Invite by phone / list my pending invites |
 | POST | /api/group-invitations/{id}/accept | Accept group invite |
