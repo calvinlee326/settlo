@@ -231,6 +231,11 @@ export default function GroupDetailPage() {
               expense={expense}
               style={{ animationDelay: `${i * 50}ms` }}
               canDelete={!isSettled && (expense.created_by === user?.id || isCreator)}
+              editTo={
+                !isSettled && (expense.created_by === user?.id || isCreator)
+                  ? `/groups/${id}/expenses/${expense.id}/edit`
+                  : undefined
+              }
               onDelete={() => handleDeleteExpense(expense.id)}
             />
           ))}

@@ -1,6 +1,10 @@
 import heapq
 from decimal import Decimal
 
+from sqlalchemy import func, or_
+
+from app.models.expense import Expense, ExpenseSplit, Settlement
+
 CENT = Decimal("0.01")
 
 
@@ -53,3 +57,54 @@ def calculate_settlements(balances: dict[str, Decimal]) -> list[dict]:
             heapq.heappush(debtors, (-remaining_debt, debtor))
 
     return transactions
+
+
+def net_balances_by_group(
+    db, user_id: str, group_ids: list[str]
+) -> dict[str, Decimal]:
+    """Net balance (paid - owed, less anything already settled) per group.
+
+    Mirrors the per-group balance math in the settlements router, batched so the
+    group list can show one number per group without a query per group.
+    """
+    if not group_ids:
+        return {}
+
+    balances: dict[str, Decimal] = {gid: Decimal("0") for gid in group_ids}
+
+    paid = (
+        db.query(Expense.group_id, func.sum(Expense.amount))
+        .filter(Expense.group_id.in_(group_ids), Expense.paid_by == user_id)
+        .group_by(Expense.group_id)
+        .all()
+    )
+    for gid, total in paid:
+        balances[gid] += Decimal(total or 0)
+
+    owed = (
+        db.query(Expense.group_id, func.sum(ExpenseSplit.amount))
+        .join(Expense, Expense.id == ExpenseSplit.expense_id)
+        .filter(Expense.group_id.in_(group_ids), ExpenseSplit.user_id == user_id)
+        .group_by(Expense.group_id)
+        .all()
+    )
+    for gid, total in owed:
+        balances[gid] -= Decimal(total or 0)
+
+    settled = (
+        db.query(Settlement.group_id, Settlement.from_user, func.sum(Settlement.amount))
+        .filter(
+            Settlement.group_id.in_(group_ids),
+            Settlement.is_paid.is_(True),
+            or_(Settlement.from_user == user_id, Settlement.to_user == user_id),
+        )
+        .group_by(Settlement.group_id, Settlement.from_user)
+        .all()
+    )
+    for gid, from_user, total in settled:
+        if from_user == user_id:
+            balances[gid] += Decimal(total or 0)
+        else:
+            balances[gid] -= Decimal(total or 0)
+
+    return {gid: amount.quantize(CENT) for gid, amount in balances.items()}

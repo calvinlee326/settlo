@@ -140,6 +140,62 @@ def list_expenses(
     return [_expense_out(e) for e in expenses]
 
 
+@router.put("/{expense_id}", response_model=ExpenseOut)
+def update_expense(
+    group_id: str,
+    expense_id: str,
+    body: ExpenseCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    group = get_group_or_404(db, group_id)
+    require_membership(db, group_id, current_user.id)
+    if group.settled_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Group is already settled"
+        )
+    expense = (
+        db.query(Expense)
+        .filter(Expense.id == expense_id, Expense.group_id == group_id)
+        .first()
+    )
+    if expense is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Expense not found"
+        )
+    if expense.created_by != current_user.id and group.created_by != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the expense creator or group creator can edit this expense",
+        )
+
+    member_ids = [
+        m.user_id
+        for m in db.query(Membership).filter(Membership.group_id == group_id).all()
+    ]
+    if body.paid_by not in member_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Payer must be a group member",
+        )
+
+    splits = _build_splits(body, member_ids)
+
+    expense.title = body.title.strip()
+    expense.amount = body.amount.quantize(CENT)
+    expense.currency = body.currency.upper()
+    expense.split_type = body.split_type
+    expense.paid_by = body.paid_by
+    db.query(ExpenseSplit).filter(ExpenseSplit.expense_id == expense_id).delete(
+        synchronize_session=False
+    )
+    for user_id, amount in splits:
+        db.add(ExpenseSplit(expense_id=expense.id, user_id=user_id, amount=amount))
+    db.commit()
+    db.refresh(expense)
+    return _expense_out(expense)
+
+
 @router.delete("/{expense_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_expense(
     group_id: str,

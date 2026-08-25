@@ -7,7 +7,8 @@ import ErrorMessage from '../components/ErrorMessage';
 import { SkeletonList } from '../components/LoadingSpinner';
 
 export default function NewExpensePage() {
-  const { id } = useParams();
+  const { id, expenseId } = useParams();
+  const isEdit = Boolean(expenseId);
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
 
@@ -22,17 +23,35 @@ export default function NewExpensePage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    api
-      .get(`/groups/${id}`)
-      .then(({ data }) => {
-        setMembers(data.members);
-        setPaidBy(user?.id || data.members[0]?.id || '');
+    const requests = [api.get(`/groups/${id}`)];
+    if (isEdit) requests.push(api.get(`/groups/${id}/expenses/`));
+    Promise.all(requests)
+      .then(([groupRes, expensesRes]) => {
+        setMembers(groupRes.data.members);
+        const expense = expensesRes?.data.find((e) => e.id === expenseId);
+        if (isEdit && !expense) {
+          setError('Expense not found');
+          return;
+        }
+        if (expense) {
+          setTitle(expense.title);
+          setAmount(expense.amount.toFixed(2));
+          setPaidBy(expense.paid_by);
+          setSplitType(expense.split_type);
+          setCustomSplits(
+            Object.fromEntries(
+              expense.splits.map((s) => [s.user_id, s.amount.toFixed(2)])
+            )
+          );
+        } else {
+          setPaidBy(user?.id || groupRes.data.members[0]?.id || '');
+        }
       })
       .catch((err) =>
         setError(err.response?.data?.detail || 'Failed to load group')
       )
       .finally(() => setLoading(false));
-  }, [id, user]);
+  }, [id, expenseId, isEdit, user]);
 
   const totalAmount = parseFloat(amount) || 0;
   const customTotal = useMemo(
@@ -75,10 +94,17 @@ export default function NewExpensePage() {
           amount: (parseFloat(customSplits[m.id]) || 0).toFixed(2),
         }));
       }
-      await api.post(`/groups/${id}/expenses/`, body);
+      if (isEdit) {
+        await api.put(`/groups/${id}/expenses/${expenseId}`, body);
+      } else {
+        await api.post(`/groups/${id}/expenses/`, body);
+      }
       navigate(`/groups/${id}`);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to add expense');
+      setError(
+        err.response?.data?.detail ||
+          (isEdit ? 'Failed to save expense' : 'Failed to add expense')
+      );
       setSubmitting(false);
     }
   };
@@ -87,7 +113,9 @@ export default function NewExpensePage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-[28px] font-semibold text-ink">Add Expense</h1>
+      <h1 className="text-[28px] font-semibold text-ink">
+        {isEdit ? 'Edit Expense' : 'Add Expense'}
+      </h1>
       <form onSubmit={handleSubmit} className="card space-y-4 p-6">
         <div>
           <label className="mb-1.5 block text-[13px] font-medium text-muted">
@@ -224,7 +252,7 @@ export default function NewExpensePage() {
             disabled={submitting || (splitType === 'CUSTOM' && !customValid)}
             className="flex-1"
           >
-            {submitting ? 'Saving…' : 'Add Expense'}
+            {submitting ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Expense'}
           </Button>
         </div>
       </form>
