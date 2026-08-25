@@ -12,7 +12,7 @@ from app.database import get_db
 from app.models.expense import Expense, ExpenseSplit, Settlement, SplitType
 from app.models.group import Group, Membership
 from app.models.user import User, utcnow
-from app.services.settlement import equal_split
+from app.services.settlement import equal_split, net_balances_by_group
 from app.schemas.group import (
     AddMemberRequest,
     GroupCreate,
@@ -215,6 +215,7 @@ def list_my_groups(
             .all()
         )
         totals = {gid: float(total or 0) for gid, total in rows}
+    my_balances = net_balances_by_group(db, current_user.id, group_ids)
     return [
         GroupOut(
             id=g.id,
@@ -226,6 +227,7 @@ def list_my_groups(
             member_count=counts[g.id],
             settled_at=g.settled_at,
             total=totals.get(g.id, 0.0),
+            my_balance=float(my_balances.get(g.id, 0)),
         )
         for g in groups
     ]

@@ -74,6 +74,16 @@ export default function App() {
         }
       />
       <Route
+        path="/groups/:id/expenses/:expenseId/edit"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <NewExpensePage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/groups/:id/settle"
         element={
           <ProtectedRoute>

@@ -45,10 +45,25 @@ export default function HomePage() {
   }, []);
 
   const activeGroups = groups.filter((g) => !g.settled_at);
+  const netBalance = activeGroups.reduce(
+    (sum, g) => sum + (g.my_balance || 0),
+    0
+  );
 
   return (
     <div className="space-y-4">
-      <h1 className="text-[28px] font-semibold text-ink">My Groups</h1>
+      <div>
+        <h1 className="text-[28px] font-semibold text-ink">My Groups</h1>
+        {activeGroups.length > 0 && (
+          <p className="mt-1 text-[15px] text-ink-soft">
+            {Math.abs(netBalance) < 0.005
+              ? 'You are settled up across all groups.'
+              : netBalance > 0
+                ? `Overall you're owed $${netBalance.toFixed(2)}.`
+                : `Overall you owe $${Math.abs(netBalance).toFixed(2)}.`}
+          </p>
+        )}
+      </div>
       <ErrorMessage message={error} />
       {invites.length > 0 && (
         <div className="space-y-2">

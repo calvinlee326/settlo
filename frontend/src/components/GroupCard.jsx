@@ -18,9 +18,26 @@ export default function GroupCard({ group, style }) {
           {group.description}
         </p>
       )}
-      <p className="mt-2 text-[13px] text-muted">
-        Created {new Date(group.created_at).toLocaleDateString()}
-      </p>
+      <div className="mt-2 flex items-center justify-between gap-3">
+        <p className="text-[13px] text-muted">
+          Created {new Date(group.created_at).toLocaleDateString()}
+        </p>
+        {typeof group.my_balance === 'number' && (
+          <p
+            className={`shrink-0 text-[13px] tabular-nums ${
+              Math.abs(group.my_balance) < 0.005
+                ? 'text-muted'
+                : 'font-semibold text-ink'
+            }`}
+          >
+            {Math.abs(group.my_balance) < 0.005
+              ? 'Settled up'
+              : group.my_balance > 0
+                ? `You're owed $${group.my_balance.toFixed(2)}`
+                : `You owe $${Math.abs(group.my_balance).toFixed(2)}`}
+          </p>
+        )}
+      </div>
     </Link>
   );
 }

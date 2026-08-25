@@ -27,6 +27,7 @@ class GroupOut(BaseModel):
     settled_at: datetime | None = None
     total: float = 0
     member_count: int = 0
+    my_balance: float | None = None
 
 
 class GroupDetail(GroupOut):

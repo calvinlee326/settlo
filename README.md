@@ -4,7 +4,8 @@ Split bills for dinners, trips, and more — in groups or one-on-one with friend
 
 ## Features
 
-- **Groups** — create a group, add expenses (split equally or with custom amounts), and settle up with the fewest transactions.
+- **Groups** — create a group, add expenses (split equally or with custom amounts), edit or remove them, and settle up with the fewest transactions.
+- **Balances at a glance** — the home screen shows what you owe or are owed in each group, plus an overall net figure.
 - **Friends & direct expenses** — add friends by phone, log one-on-one expenses outside any group, and track a running balance per friend.
 - **Invitations** — invite someone to a group by phone (a pending invite appears on their home screen), by scanning a QR code, or by adding an existing friend.
 - **Member management** — the creator can remove members and any member can leave a group; removal is blocked while that member still has expenses or settlements.
