@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fastapi import HTTPException
 from pydantic import ValidationError
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql.schema import MetaData
 
@@ -25,7 +25,7 @@ from app.models.expense import Expense, ExpenseSplit, Settlement, SplitType
 from app.models.group import Group, Membership
 from app.models.user import OTPCode, User
 from app.routers import auth as auth_router
-from app.routers.groups import _group_detail, remove_member
+from app.routers.groups import _group_detail, list_my_groups, remove_member
 from app.routers.settlements import get_settlements, mark_paid
 from app.schemas.user import SendOTPRequest
 from app.services import otp as otp_service
@@ -250,6 +250,43 @@ class PublicReadinessTest(unittest.TestCase):
             sorted(auth_router._otp_ip_attempts), ["203.0.113.7", "203.0.113.8"]
         )
         auth_router._otp_ip_attempts.clear()
+
+    def test_listing_groups_does_not_scale_queries_with_group_count(self):
+        """Guards the member-count batching: a per-group COUNT would grow this."""
+        users = [User(phone_number=f"+1555444{i:04d}", username=f"U{i}") for i in range(4)]
+        self.db.add_all(users)
+        self.db.flush()
+
+        def make_groups(count, offset):
+            for gi in range(count):
+                group = Group(
+                    name=f"G{offset + gi}",
+                    created_by=users[0].id,
+                    invite_token=f"scale-{offset + gi}",
+                )
+                self.db.add(group)
+                self.db.flush()
+                for user in users:
+                    self.db.add(Membership(group_id=group.id, user_id=user.id))
+            self.db.commit()
+
+        def count_queries():
+            statements = []
+            listener = lambda conn, cur, stmt, params, ctx, many: statements.append(stmt)
+            event.listen(self.engine, "before_cursor_execute", listener)
+            try:
+                groups = list_my_groups(current_user=users[0], db=self.db)
+            finally:
+                event.remove(self.engine, "before_cursor_execute", listener)
+            return len(groups), len(statements)
+
+        make_groups(3, 0)
+        few_groups, few_queries = count_queries()
+        make_groups(15, 3)
+        many_groups, many_queries = count_queries()
+
+        self.assertEqual((few_groups, many_groups), (3, 18))
+        self.assertEqual(few_queries, many_queries)
 
     def test_generate_otp_uses_twilio_verify(self):
         phone_number = "+15550000005"

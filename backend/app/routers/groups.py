@@ -213,13 +213,16 @@ def list_my_groups(
         .order_by(Group.created_at.desc())
         .all()
     )
-    counts = {
-        g.id: db.query(Membership).filter(Membership.group_id == g.id).count()
-        for g in groups
-    }
+    counts: dict[str, int] = {}
     totals: dict[str, float] = {}
     group_ids = [g.id for g in groups]
     if group_ids:
+        counts = dict(
+            db.query(Membership.group_id, func.count(Membership.user_id))
+            .filter(Membership.group_id.in_(group_ids))
+            .group_by(Membership.group_id)
+            .all()
+        )
         rows = (
             db.query(Expense.group_id, func.sum(Expense.amount))
             .filter(Expense.group_id.in_(group_ids))
@@ -236,7 +239,7 @@ def list_my_groups(
             max_members=g.max_members,
             created_by=g.created_by,
             created_at=g.created_at,
-            member_count=counts[g.id],
+            member_count=counts.get(g.id, 0),
             settled_at=g.settled_at,
             total=totals.get(g.id, 0.0),
             my_balance=float(my_balances.get(g.id, 0)),
