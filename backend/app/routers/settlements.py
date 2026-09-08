@@ -37,6 +37,11 @@ def _settlement_out(s: Settlement, usernames: dict[str, str | None]) -> Settleme
         is_paid=s.is_paid,
         paid_at=s.paid_at,
         created_at=s.created_at,
+        recorded_by=s.recorded_by,
+        recorded_by_username=usernames.get(s.recorded_by),
+        reversed_by=s.reversed_by,
+        reversed_by_username=usernames.get(s.reversed_by),
+        reversed_at=s.reversed_at,
     )
 
 
@@ -122,11 +127,14 @@ def get_settlements(
         .all()
     )
 
+    reversed_settlements = db.query(Settlement).filter(
+        Settlement.group_id == group_id, Settlement.reversed_at.is_not(None)
+    ).order_by(Settlement.reversed_at.desc()).all()
     user_ids = set(balances.keys())
     for t in transactions:
         user_ids.update([t["from_user"], t["to_user"]])
-    for s in paid_settlements:
-        user_ids.update([s.from_user, s.to_user])
+    for s in paid_settlements + reversed_settlements:
+        user_ids.update(uid for uid in (s.from_user, s.to_user, s.recorded_by, s.reversed_by) if uid)
     users = db.query(User).filter(User.id.in_(user_ids)).all() if user_ids else []
     usernames = {u.id: u.username for u in users}
 
@@ -141,6 +149,7 @@ def get_settlements(
         ],
         settlements=[_transaction_out(group_id, t, usernames) for t in transactions],
         paid_settlements=[_settlement_out(s, usernames) for s in paid_settlements],
+        reversed_settlements=[_settlement_out(s, usernames) for s in reversed_settlements],
     )
 
 
@@ -150,9 +159,11 @@ def confirm_settlement(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    group = get_group_or_404(db, group_id)
+    group = get_group_or_404(db, group_id, lock=True)
     require_membership(db, group_id, current_user.id)
 
+    if group.created_by != current_user.id:
+        raise HTTPException(status_code=403, detail="Only the group creator can archive this group")
     if group.settled_at is not None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Group is already settled"
@@ -165,19 +176,9 @@ def confirm_settlement(
         )
 
     balances = _compute_balances(db, group_id)
-    transactions = calculate_settlements(balances)
+    if any(balance != 0 for balance in balances.values()):
+        raise HTTPException(status_code=400, detail="Record all payments before archiving")
     now = _utcnow()
-    for t in transactions:
-        db.add(
-            Settlement(
-                group_id=group_id,
-                from_user=t["from_user"],
-                to_user=t["to_user"],
-                amount=t["amount"],
-                is_paid=True,
-                paid_at=now,
-            )
-        )
     group.settled_at = now
     group.settled_by = current_user.id
     db.commit()
@@ -192,7 +193,7 @@ def mark_paid(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    group = get_group_or_404(db, group_id)
+    group = get_group_or_404(db, group_id, lock=True)
     require_membership(db, group_id, current_user.id)
     if group.settled_at is not None:
         raise HTTPException(
@@ -228,10 +229,10 @@ def mark_paid(
             amount=transaction["amount"],
         )
         db.add(settlement)
-    elif settlement.is_paid:
+    elif settlement.is_paid or settlement.reversed_at is not None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Settlement is already paid",
+            detail="Settlement is already recorded; refresh outstanding payments",
         )
     if current_user.id not in (settlement.from_user, settlement.to_user):
         raise HTTPException(
@@ -241,6 +242,7 @@ def mark_paid(
 
     settlement.is_paid = True
     settlement.paid_at = _utcnow()
+    settlement.recorded_by = current_user.id
     db.commit()
     db.refresh(settlement)
 
@@ -251,3 +253,33 @@ def mark_paid(
     )
     usernames = {u.id: u.username for u in users}
     return _settlement_out(settlement, usernames)
+
+
+@router.post("/{settlement_id}/reverse", response_model=SettlementOut)
+def reverse_payment(
+    group_id: str,
+    settlement_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    group = get_group_or_404(db, group_id, lock=True)
+    require_membership(db, group_id, current_user.id)
+    if group.settled_at is not None:
+        raise HTTPException(status_code=400, detail="Group is already settled")
+    settlement = db.query(Settlement).filter(
+        Settlement.id == settlement_id, Settlement.group_id == group_id
+    ).first()
+    if settlement is None:
+        raise HTTPException(status_code=404, detail="Settlement not found")
+    if current_user.id not in (settlement.from_user, settlement.to_user):
+        raise HTTPException(status_code=403, detail="Only the payer or payee can reverse this payment")
+    if not settlement.is_paid or settlement.reversed_at is not None:
+        raise HTTPException(status_code=400, detail="Payment is not active")
+    settlement.is_paid = False
+    settlement.reversed_by = current_user.id
+    settlement.reversed_at = _utcnow()
+    db.commit()
+    users = db.query(User).filter(User.id.in_([
+        settlement.from_user, settlement.to_user, settlement.recorded_by, settlement.reversed_by
+    ])).all()
+    return _settlement_out(settlement, {u.id: u.username for u in users})

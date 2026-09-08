@@ -79,6 +79,63 @@ class ExpenseEditTest(unittest.TestCase):
         self.assertEqual(res.status_code, 201, res.text)
         return res.json()
 
+    def test_equal_split_between_a_subset_of_members(self):
+        res = self.client.post(
+            f"/api/groups/{self.group.id}/expenses/",
+            json={
+                "title": "Dinner", "amount": "30.00", "paid_by": self.a.id,
+                "split_type": "EQUAL", "participants": [self.a.id, self.b.id],
+            },
+            headers=self._auth(self.a),
+        )
+        self.assertEqual(res.status_code, 201, res.text)
+        shares = {s["user_id"]: s["amount"] for s in res.json()["splits"]}
+        self.assertEqual(shares, {self.a.id: 15.0, self.b.id: 15.0})
+
+    def test_equal_split_rejects_a_non_member_participant(self):
+        outsider = User(phone_number="+15550000009", username="Z")
+        self.db.add(outsider)
+        self.db.commit()
+        res = self.client.post(
+            f"/api/groups/{self.group.id}/expenses/",
+            json={
+                "title": "Dinner", "amount": "30.00", "paid_by": self.a.id,
+                "split_type": "EQUAL", "participants": [self.a.id, outsider.id],
+            },
+            headers=self._auth(self.a),
+        )
+        self.assertEqual(res.status_code, 400)
+
+    def test_joining_does_not_widen_a_subset_expense(self):
+        subset = self.client.post(
+            f"/api/groups/{self.group.id}/expenses/",
+            json={
+                "title": "Dinner", "amount": "30.00", "paid_by": self.a.id,
+                "split_type": "EQUAL", "participants": [self.a.id, self.b.id],
+            },
+            headers=self._auth(self.a),
+        ).json()
+        group_wide = self._add_expense(self.a, amount="30.00")
+
+        joiner = User(phone_number="+15550000004", username="D")
+        self.db.add(joiner)
+        self.db.commit()
+        res = self.client.post(
+            f"/api/groups/join/{self.group.invite_token}",
+            headers=self._auth(joiner),
+        )
+        self.assertEqual(res.status_code, 200, res.text)
+
+        listed = self.client.get(
+            f"/api/groups/{self.group.id}/expenses/", headers=self._auth(self.a)
+        ).json()
+        by_id = {e["id"]: e for e in listed}
+        self.assertEqual(
+            {s["user_id"] for s in by_id[subset["id"]]["splits"]},
+            {self.a.id, self.b.id},
+        )
+        self.assertEqual(len(by_id[group_wide["id"]]["splits"]), 4)
+
     def test_edit_replaces_amount_payer_and_splits(self):
         expense = self._add_expense(self.a)
         res = self.client.put(
@@ -125,6 +182,20 @@ class ExpenseEditTest(unittest.TestCase):
         )
         self.assertEqual(res.status_code, 400)
 
+    def test_edit_history_preserves_previous_values(self):
+        expense = self._add_expense(self.a)
+        response = self.client.put(
+            f"/api/groups/{self.group.id}/expenses/{expense['id']}",
+            json={"title": "Changed", "amount": "60", "paid_by": self.b.id, "split_type": "EQUAL"},
+            headers=self._auth(self.a),
+        )
+        self.assertEqual(response.status_code, 200)
+        history = self.client.get(f"/api/groups/{self.group.id}/expenses/{expense['id']}/history", headers=self._auth(self.b))
+        self.assertEqual(history.status_code, 200)
+        revision = history.json()[0]
+        self.assertEqual(revision["snapshot"], expense)
+        self.assertEqual(revision["changed_by"], self.a.id)
+
     def test_edit_forbidden_for_other_member(self):
         expense = self._add_expense(self.b, paid_by=self.b.id)
         res = self.client.put(
@@ -141,6 +212,9 @@ class ExpenseEditTest(unittest.TestCase):
 
     def test_edit_blocked_once_group_is_settled(self):
         expense = self._add_expense(self.a)
+        payments = self.client.get(f"/api/groups/{self.group.id}/settlements/", headers=self._auth(self.a)).json()
+        for payment in payments["settlements"]:
+            self.client.post(f"/api/groups/{self.group.id}/settlements/{payment['id']}/pay", headers=self._auth(self.a))
         self.client.post(
             f"/api/groups/{self.group.id}/settlements/confirm",
             headers=self._auth(self.a),

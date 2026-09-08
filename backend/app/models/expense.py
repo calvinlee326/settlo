@@ -2,7 +2,7 @@ import enum
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Numeric, String
+from sqlalchemy import Boolean, DateTime, Enum, JSON, ForeignKey, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -63,5 +63,19 @@ class Settlement(Base):
     paid_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
+    recorded_by: Mapped[str | None] = mapped_column(String(36), ForeignKey("users.id"), nullable=True)
+    reversed_by: Mapped[str | None] = mapped_column(String(36), ForeignKey("users.id"), nullable=True)
+    reversed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
     from_user_obj = relationship("User", foreign_keys=[from_user])
     to_user_obj = relationship("User", foreign_keys=[to_user])
+
+
+class ExpenseRevision(Base):
+    __tablename__ = "expense_revisions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
+    expense_id: Mapped[str] = mapped_column(String(36), ForeignKey("expenses.id", ondelete="CASCADE"), index=True)
+    changed_by: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
+    changed_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    snapshot: Mapped[dict] = mapped_column(JSON)

@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -10,6 +11,8 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    REFRESH_COOKIE_SECURE: bool = True
+    REFRESH_COOKIE_SAMESITE: Literal["lax", "strict", "none"] = "none"
     OTP_EXPIRE_MINUTES: int = 10
     OTP_SEND_LIMIT: int = 3
     OTP_IP_SEND_LIMIT: int = 20
@@ -33,6 +36,8 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _guard_dev_otp(self) -> "Settings":
+        if self.REFRESH_COOKIE_SAMESITE == "none" and not self.REFRESH_COOKIE_SECURE:
+            raise ValueError("SameSite=None requires a Secure refresh cookie")
         if self.DEV_OTP_CODE and "sqlite" not in self.DATABASE_URL:
             raise ValueError(
                 "DEV_OTP_CODE is a local-only login bypass and may only be used "

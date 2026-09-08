@@ -1,7 +1,7 @@
 from collections import deque
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -10,14 +10,11 @@ from app.core.security import (
     create_refresh_token,
     decode_token,
     get_current_user,
-    get_token,
 )
 from app.database import get_db
 from app.models.user import TokenBlacklist, User
 from app.schemas.user import (
     AccessTokenResponse,
-    LogoutRequest,
-    RefreshRequest,
     SendOTPRequest,
     SendOTPResponse,
     SetUsernameRequest,
@@ -39,6 +36,17 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 # Move to Redis if the backend ever runs more than one instance.
 _otp_ip_attempts: dict[str, deque[datetime]] = {}
 OTP_IP_SWEEP_THRESHOLD = 1024
+REFRESH_COOKIE_NAME = "settlo_refresh"
+REFRESH_COOKIE_PATH = "/api/auth"
+_AUTH_ORIGINS = frozenset(
+    [settings.FRONTEND_URL]
+    + [origin.strip() for origin in settings.EXTRA_ORIGINS.split(",") if origin.strip()]
+)
+
+
+def _check_origin(request: Request) -> None:
+    if request.headers.get("origin") not in _AUTH_ORIGINS:
+        raise HTTPException(status_code=403, detail="Untrusted request origin")
 
 
 def _check_otp_ip_limit(request: Request) -> None:
@@ -96,7 +104,11 @@ def send_otp(
 
 
 @router.post("/verify-otp", response_model=TokenResponse)
-def verify_otp_endpoint(body: VerifyOTPRequest, db: Session = Depends(get_db)):
+def verify_otp_endpoint(
+    body: VerifyOTPRequest, request: Request, response: Response,
+    db: Session = Depends(get_db),
+):
+    _check_origin(request)
     try:
         verify_otp(db, body.phone_number, body.code)
     except OTPLockedError as exc:
@@ -115,11 +127,19 @@ def verify_otp_endpoint(body: VerifyOTPRequest, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(user)
 
+    response.set_cookie(
+        REFRESH_COOKIE_NAME,
+        create_refresh_token(user.id),
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400,
+        httponly=True,
+        secure=settings.REFRESH_COOKIE_SECURE,
+        samesite=settings.REFRESH_COOKIE_SAMESITE,
+        path=REFRESH_COOKIE_PATH,
+    )
     is_new_user = user.username is None
     return TokenResponse(
         is_new_user=is_new_user,
         access_token=create_access_token(user.id),
-        refresh_token=create_refresh_token(user.id),
         user=UserOut.model_validate(user),
     )
 
@@ -137,29 +157,37 @@ def set_username(
 
 
 @router.post("/logout")
-def logout(
-    body: LogoutRequest | None = None,
-    token: str = Depends(get_token),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    _blacklist(db, token)
-    if body and body.refresh_token:
-        _blacklist(db, body.refresh_token)
+def logout(request: Request, response: Response, db: Session = Depends(get_db)):
+    _check_origin(request)
+    authorization = request.headers.get("authorization", "")
+    if authorization.lower().startswith("bearer "):
+        _blacklist(db, authorization[7:])
+    cookie = request.cookies.get(REFRESH_COOKIE_NAME)
+    if cookie:
+        _blacklist(db, cookie)
     db.commit()
+    response.delete_cookie(
+        REFRESH_COOKIE_NAME, path=REFRESH_COOKIE_PATH,
+        secure=settings.REFRESH_COOKIE_SECURE, httponly=True,
+        samesite=settings.REFRESH_COOKIE_SAMESITE,
+    )
     return {"message": "Logged out"}
 
 
 @router.post("/refresh", response_model=AccessTokenResponse)
-def refresh(body: RefreshRequest, db: Session = Depends(get_db)):
-    payload = decode_token(body.refresh_token)
+def refresh(request: Request, db: Session = Depends(get_db)):
+    _check_origin(request)
+    cookie = request.cookies.get(REFRESH_COOKIE_NAME)
+    if not cookie:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    payload = decode_token(cookie)
     if payload.get("type") != "refresh":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type"
         )
     blacklisted = (
         db.query(TokenBlacklist)
-        .filter(TokenBlacklist.token == body.refresh_token)
+        .filter(TokenBlacklist.token == cookie)
         .first()
     )
     if blacklisted:

@@ -1,7 +1,7 @@
 import Avatar from './Avatar';
 import Button from './Button';
 
-export default function SettlementItem({ settlement, onPay, paying, style }) {
+export default function SettlementItem({ settlement, onPay, onReverse, paying, style }) {
   return (
     <div
       style={style}
@@ -36,14 +36,33 @@ export default function SettlementItem({ settlement, onPay, paying, style }) {
         >
           ${settlement.amount.toFixed(2)}
         </p>
+        {settlement.recorded_by_username && (
+          <p className="text-xs text-muted">
+            Recorded by {settlement.recorded_by_username}
+            {settlement.paid_at &&
+              ` on ${new Date(settlement.paid_at).toLocaleDateString()}`}
+          </p>
+        )}
       </div>
       {settlement.is_paid ? (
-        <span className="flex shrink-0 items-center gap-1 rounded-pill border border-rule px-3 py-1 text-xs font-semibold text-ink">
-          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
-          Paid
-        </span>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="flex items-center gap-1 rounded-pill border border-rule px-3 py-1 text-xs font-semibold text-ink">
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+            Paid
+          </span>
+          {onReverse && (
+            <button
+              type="button"
+              onClick={onReverse}
+              disabled={paying}
+              className="text-xs font-medium text-muted underline transition-colors hover:text-ink disabled:opacity-50"
+            >
+              {paying ? 'Undoing…' : 'Undo'}
+            </button>
+          )}
+        </div>
       ) : onPay ? (
         <Button
           onClick={onPay}

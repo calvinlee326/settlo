@@ -44,12 +44,13 @@ def _unique_invite_code(db: Session) -> str:
     )
 
 
-def get_group_or_404(db: Session, group_id: str) -> Group:
-    group = (
-        db.query(Group)
-        .filter(Group.id == group_id, Group.deleted_at.is_(None))
-        .first()
-    )
+def get_group_or_404(db: Session, group_id: str, lock: bool = False) -> Group:
+    query = db.query(Group).filter(Group.id == group_id, Group.deleted_at.is_(None))
+    if lock:
+        # ponytail: row lock serialises concurrent expense/settlement writes.
+        # No-op on SQLite; Postgres is where it matters.
+        query = query.with_for_update()
+    group = query.first()
     if group is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Group not found"
@@ -101,7 +102,18 @@ def _add_member(db: Session, group: Group, user_id: str) -> None:
         .filter(Expense.group_id == group.id, Expense.split_type == SplitType.EQUAL)
         .all()
     )
+    prior_ids = {uid for uid in member_ids if uid != user_id}
     for e in equal_expenses:
+        split_ids = {
+            row.user_id
+            for row in db.query(ExpenseSplit.user_id)
+            .filter(ExpenseSplit.expense_id == e.id)
+            .all()
+        }
+        # An equal expense deliberately split between a subset of the group
+        # keeps that subset; only group-wide ones absorb the new member.
+        if split_ids != prior_ids:
+            continue
         db.query(ExpenseSplit).filter(ExpenseSplit.expense_id == e.id).delete(
             synchronize_session=False
         )
