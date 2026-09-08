@@ -19,6 +19,7 @@ export default function NewExpensePage() {
   const [splitType, setSplitType] = useState('EQUAL');
   const [customSplits, setCustomSplits] = useState({});
   const [participants, setParticipants] = useState([]);
+  const [history, setHistory] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -55,6 +56,14 @@ export default function NewExpensePage() {
       )
       .finally(() => setLoading(false));
   }, [id, expenseId, isEdit, user]);
+
+  useEffect(() => {
+    if (!isEdit) return;
+    api
+      .get(`/groups/${id}/expenses/${expenseId}/history`)
+      .then(({ data }) => setHistory(data))
+      .catch(() => {});
+  }, [id, expenseId, isEdit]);
 
   const totalAmount = parseFloat(amount) || 0;
   const customTotal = useMemo(
@@ -306,6 +315,22 @@ export default function NewExpensePage() {
                   ? `$${customDiff.toFixed(2)} left to assign`
                   : `$${Math.abs(customDiff).toFixed(2)} over the total`}
             </div>
+          </div>
+        )}
+
+        {history.length > 0 && (
+          <div className="space-y-1 rounded-[14px] border border-rule bg-surface p-4">
+            <h2 className="text-[13px] font-medium uppercase tracking-wide text-muted">
+              Edit history
+            </h2>
+            {history.map((revision) => (
+              <p key={revision.id} className="text-[13px] text-muted">
+                Was &ldquo;{revision.snapshot.title}&rdquo; for $
+                {revision.snapshot.amount.toFixed(2)} &middot; changed by{' '}
+                {revision.changed_by_username || 'someone'} on{' '}
+                {new Date(revision.changed_at).toLocaleDateString()}
+              </p>
+            ))}
           </div>
         )}
 

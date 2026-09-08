@@ -12,6 +12,7 @@ export default function SettlementPage() {
   const [balances, setBalances] = useState([]);
   const [settlements, setSettlements] = useState([]);
   const [paidSettlements, setPaidSettlements] = useState([]);
+  const [reversedSettlements, setReversedSettlements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [confirming, setConfirming] = useState(false);
   const [pendingId, setPendingId] = useState(null);
@@ -24,6 +25,7 @@ export default function SettlementPage() {
       setBalances(data.balances);
       setSettlements(data.settlements);
       setPaidSettlements(data.paid_settlements ?? []);
+      setReversedSettlements(data.reversed_settlements ?? []);
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to load settlements');
     } finally {
@@ -147,6 +149,27 @@ export default function SettlementPage() {
                   act(settlement.id, 'reverse', 'Failed to undo this payment')
                 }
               />
+            ))}
+          </div>
+        </>
+      )}
+
+      {reversedSettlements.length > 0 && (
+        <>
+          <h2 className="text-lg font-medium text-ink">Undone payments</h2>
+          <div className="space-y-2">
+            {reversedSettlements.map((s) => (
+              <div
+                key={s.id}
+                className="rounded-card border border-dashed border-rule bg-surface p-4 text-[13px] text-muted"
+              >
+                <span className="text-ink">
+                  {s.from_username || 'Someone'} &rarr; {s.to_username || 'someone'}
+                </span>{' '}
+                ${s.amount.toFixed(2)} &middot; undone by{' '}
+                {s.reversed_by_username || 'someone'} on{' '}
+                {new Date(s.reversed_at).toLocaleDateString()}
+              </div>
             ))}
           </div>
         </>

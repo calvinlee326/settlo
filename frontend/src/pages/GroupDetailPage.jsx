@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import api from '../api/axios';
@@ -26,6 +26,9 @@ export default function GroupDetailPage() {
   // ponytail: one busy flag for the whole page. Split per-action if two
   // of these ever need to run at once.
   const [busy, setBusy] = useState(false);
+  const [search, setSearch] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
 
   useEffect(() => {
     api
@@ -162,6 +165,28 @@ export default function GroupDetailPage() {
     }
   };
 
+  const visibleExpenses = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    // toDate is an inclusive day, so compare against the end of it.
+    const from = fromDate ? new Date(`${fromDate}T00:00:00`) : null;
+    const to = toDate ? new Date(`${toDate}T23:59:59.999`) : null;
+    return expenses.filter((e) => {
+      if (
+        needle &&
+        !e.title.toLowerCase().includes(needle) &&
+        !(e.paid_by_username || '').toLowerCase().includes(needle)
+      ) {
+        return false;
+      }
+      const at = new Date(e.created_at);
+      if (from && at < from) return false;
+      if (to && at > to) return false;
+      return true;
+    });
+  }, [expenses, search, fromDate, toDate]);
+
+  const filtersActive = Boolean(search.trim() || fromDate || toDate);
+
   if (loading) return <SkeletonList count={4} />;
   if (!group) return <ErrorMessage message={error || 'Group not found'} />;
 
@@ -256,7 +281,67 @@ export default function GroupDetailPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {expenses.map((expense, i) => (
+          <div className="card space-y-2 p-4">
+            <label htmlFor="expense-search" className="sr-only">
+              Search expenses
+            </label>
+            <input
+              id="expense-search"
+              type="search"
+              placeholder="Search by title or who paid"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full rounded-xl bg-sunk px-3 py-2 text-[13px] text-ink placeholder-muted outline-none"
+            />
+            <div className="flex flex-wrap items-center gap-2">
+              <label htmlFor="expense-from" className="text-[13px] text-muted">
+                From
+              </label>
+              <input
+                id="expense-from"
+                type="date"
+                value={fromDate}
+                max={toDate || undefined}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="min-w-0 flex-1 rounded-xl bg-sunk px-3 py-2 text-[13px] text-ink outline-none"
+              />
+              <label htmlFor="expense-to" className="text-[13px] text-muted">
+                To
+              </label>
+              <input
+                id="expense-to"
+                type="date"
+                value={toDate}
+                min={fromDate || undefined}
+                onChange={(e) => setToDate(e.target.value)}
+                className="min-w-0 flex-1 rounded-xl bg-sunk px-3 py-2 text-[13px] text-ink outline-none"
+              />
+              {filtersActive && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch('');
+                    setFromDate('');
+                    setToDate('');
+                  }}
+                  className="shrink-0 text-[13px] font-medium text-muted underline hover:text-ink"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            {filtersActive && (
+              <p className="text-[13px] text-muted" role="status">
+                Showing {visibleExpenses.length} of {expenses.length} expenses
+              </p>
+            )}
+          </div>
+          {visibleExpenses.length === 0 ? (
+            <p className="rounded-card border border-dashed border-rule bg-surface p-6 text-center text-[15px] text-muted">
+              No expenses match those filters.
+            </p>
+          ) : null}
+          {visibleExpenses.map((expense, i) => (
             <ExpenseItem
               key={expense.id}
               expense={expense}
