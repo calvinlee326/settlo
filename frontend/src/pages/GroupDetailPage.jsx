@@ -10,6 +10,10 @@ import ExpenseItem from '../components/ExpenseItem';
 import { SkeletonList } from '../components/LoadingSpinner';
 import { formatPhone } from '../lib/phone';
 
+// Cap the entry stagger: past this index every card animates together, so a
+// long list finishes in ~550ms instead of growing 50ms per row.
+const STAGGER_CAP = 4;
+
 export default function GroupDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -345,7 +349,7 @@ export default function GroupDetailPage() {
             <ExpenseItem
               key={expense.id}
               expense={expense}
-              style={{ animationDelay: `${i * 50}ms` }}
+              style={{ animationDelay: `${Math.min(i, STAGGER_CAP) * 50}ms` }}
               canDelete={!isSettled && (expense.created_by === user?.id || isCreator)}
               editTo={
                 !isSettled && (expense.created_by === user?.id || isCreator)

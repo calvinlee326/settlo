@@ -5,6 +5,10 @@ import ErrorMessage from '../components/ErrorMessage';
 import GroupCard from '../components/GroupCard';
 import { SkeletonList } from '../components/LoadingSpinner';
 
+// Cap the entry stagger: past this index every card animates together, so a
+// long list finishes in ~550ms instead of growing 50ms per row.
+const STAGGER_CAP = 4;
+
 export default function HomePage() {
   const [groups, setGroups] = useState([]);
   const [friends, setFriends] = useState([]);
@@ -238,7 +242,7 @@ export default function HomePage() {
             <GroupCard
               key={group.id}
               group={group}
-              style={{ animationDelay: `${i * 50}ms` }}
+              style={{ animationDelay: `${Math.min(i, STAGGER_CAP) * 50}ms` }}
             />
           ))}
         </div>

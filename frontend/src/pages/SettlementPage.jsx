@@ -6,6 +6,10 @@ import ErrorMessage from '../components/ErrorMessage';
 import { SkeletonList } from '../components/LoadingSpinner';
 import SettlementItem from '../components/SettlementItem';
 
+// Cap the entry stagger: past this index every card animates together, so a
+// long list finishes in ~550ms instead of growing 50ms per row.
+const STAGGER_CAP = 4;
+
 export default function SettlementPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -126,7 +130,7 @@ export default function SettlementPage() {
             <SettlementItem
               key={settlement.id}
               settlement={settlement}
-              style={{ animationDelay: `${i * 50}ms` }}
+              style={{ animationDelay: `${Math.min(i, STAGGER_CAP) * 50}ms` }}
               paying={pendingId === settlement.id}
               onPay={() =>
                 act(settlement.id, 'pay', 'Failed to record this payment')
