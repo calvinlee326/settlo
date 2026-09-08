@@ -125,6 +125,20 @@ class ExpenseEditTest(unittest.TestCase):
         )
         self.assertEqual(res.status_code, 400)
 
+    def test_edit_history_preserves_previous_values(self):
+        expense = self._add_expense(self.a)
+        response = self.client.put(
+            f"/api/groups/{self.group.id}/expenses/{expense['id']}",
+            json={"title": "Changed", "amount": "60", "paid_by": self.b.id, "split_type": "EQUAL"},
+            headers=self._auth(self.a),
+        )
+        self.assertEqual(response.status_code, 200)
+        history = self.client.get(f"/api/groups/{self.group.id}/expenses/{expense['id']}/history", headers=self._auth(self.b))
+        self.assertEqual(history.status_code, 200)
+        revision = history.json()[0]
+        self.assertEqual(revision["snapshot"], expense)
+        self.assertEqual(revision["changed_by"], self.a.id)
+
     def test_edit_forbidden_for_other_member(self):
         expense = self._add_expense(self.b, paid_by=self.b.id)
         res = self.client.put(
@@ -141,6 +155,9 @@ class ExpenseEditTest(unittest.TestCase):
 
     def test_edit_blocked_once_group_is_settled(self):
         expense = self._add_expense(self.a)
+        payments = self.client.get(f"/api/groups/{self.group.id}/settlements/", headers=self._auth(self.a)).json()
+        for payment in payments["settlements"]:
+            self.client.post(f"/api/groups/{self.group.id}/settlements/{payment['id']}/pay", headers=self._auth(self.a))
         self.client.post(
             f"/api/groups/{self.group.id}/settlements/confirm",
             headers=self._auth(self.a),

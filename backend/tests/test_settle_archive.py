@@ -99,11 +99,17 @@ class SettleArchiveTest(unittest.TestCase):
         self.assertEqual(listed[0].total, 10.0)
         self.assertIsNone(listed[0].settled_at)
 
-    def test_confirm_archives_group_and_persists_settlement(self):
+    def _record_payments(self, group, actor):
+        from app.routers.settlements import get_settlements, mark_paid
+        for payment in get_settlements(group.id, current_user=actor, db=self.db).settlements:
+            mark_paid(group.id, payment.id, current_user=actor, db=self.db)
+
+    def test_confirm_archives_group_and_preserves_recorded_settlement(self):
         from app.routers.settlements import confirm_settlement, get_settlements
 
         a, b, g = self._group()
         self._expense(g, a, a, b, "10.00", "5.00", "5.00")  # B owes A 5
+        self._record_payments(g, a)
         confirm_settlement(g.id, current_user=a, db=self.db)
 
         row = self.db.query(Group).filter(Group.id == g.id).one()
@@ -128,6 +134,7 @@ class SettleArchiveTest(unittest.TestCase):
 
         a, b, g = self._group()
         self._expense(g, a, a, b, "10.00", "5.00", "5.00")
+        self._record_payments(g, a)
         confirm_settlement(g.id, current_user=a, db=self.db)
         with self.assertRaises(HTTPException) as ctx:
             confirm_settlement(g.id, current_user=a, db=self.db)
@@ -147,6 +154,7 @@ class SettleArchiveTest(unittest.TestCase):
 
         a, b, g = self._group()
         self._expense(g, a, a, b, "10.00", "10.00", "0.00")  # nets to zero
+        self._record_payments(g, a)
         confirm_settlement(g.id, current_user=a, db=self.db)
         row = self.db.query(Group).filter(Group.id == g.id).one()
         self.assertIsNotNone(row.settled_at)
@@ -163,6 +171,7 @@ class SettleArchiveTest(unittest.TestCase):
 
         a, b, g = self._group()
         self._expense(g, a, a, b, "10.00", "5.00", "5.00")
+        self._record_payments(g, a)
         confirm_settlement(g.id, current_user=a, db=self.db)
 
         body = ExpenseCreate(
@@ -179,6 +188,7 @@ class SettleArchiveTest(unittest.TestCase):
 
         a, b, g = self._group()
         e = self._expense(g, a, a, b, "10.00", "5.00", "5.00")
+        self._record_payments(g, a)
         confirm_settlement(g.id, current_user=a, db=self.db)
         with self.assertRaises(HTTPException) as ctx:
             delete_expense(g.id, e.id, current_user=a, db=self.db)
@@ -210,6 +220,7 @@ class SettleArchiveTest(unittest.TestCase):
 
         a, b, g = self._group()
         self._expense(g, a, a, b, "10.00", "5.00", "5.00")
+        self._record_payments(g, a)
         confirm_settlement(g.id, current_user=a, db=self.db)
         with self.assertRaises(HTTPException) as ctx:
             mark_paid(g.id, "draft_anything", current_user=a, db=self.db)
@@ -245,6 +256,38 @@ class SettleArchiveTest(unittest.TestCase):
         balances = _compute_balances(self.db, g.id)
         self.assertEqual(balances[a.id].quantize(Decimal("0.01")), Decimal("15.00"))
         self.assertEqual(balances[b.id].quantize(Decimal("0.01")), Decimal("-15.00"))
+
+    def test_confirm_requires_zero_balance_and_creator(self):
+        from fastapi import HTTPException
+        from app.routers.settlements import confirm_settlement
+        a, b, g = self._group()
+        self._expense(g, a, a, b, "10", "5", "5")
+        for actor, expected in ((a, 400), (b, 403)):
+            with self.assertRaises(HTTPException) as ctx:
+                confirm_settlement(g.id, current_user=actor, db=self.db)
+            self.assertEqual(ctx.exception.status_code, expected)
+        self.assertEqual(self.db.query(Settlement).count(), 0)
+        self.assertIsNone(g.settled_at)
+
+    def test_payment_reversal_preserves_record_and_restores_balance(self):
+        from fastapi import HTTPException
+        from app.routers.settlements import get_settlements, mark_paid, reverse_payment, _compute_balances
+        a, b, g = self._group()
+        self._expense(g, a, a, b, "10", "5", "5")
+        draft = get_settlements(g.id, current_user=a, db=self.db).settlements[0]
+        paid = mark_paid(g.id, draft.id, current_user=b, db=self.db)
+        self.assertEqual(paid.recorded_by, b.id)
+        reversed_payment = reverse_payment(g.id, paid.id, current_user=a, db=self.db)
+        self.assertEqual((reversed_payment.reversed_by, reversed_payment.paid_at), (a.id, paid.paid_at))
+        self.assertEqual(_compute_balances(self.db, g.id)[b.id], Decimal("-5"))
+        with self.assertRaises(HTTPException):
+            mark_paid(g.id, paid.id, current_user=b, db=self.db)
+        with self.assertRaises(HTTPException):
+            reverse_payment(g.id, paid.id, current_user=a, db=self.db)
+        result = get_settlements(g.id, current_user=a, db=self.db)
+        self.assertEqual([s.id for s in result.reversed_settlements], [paid.id])
+        self.assertEqual(result.paid_settlements, [])
+
 
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.core.security import get_current_user
 from app.database import get_db
-from app.models.expense import Expense, ExpenseSplit, SplitType
+from app.models.expense import Expense, ExpenseRevision, ExpenseSplit, SplitType
 from app.services.settlement import equal_split
 from app.models.group import Group, Membership
 from app.models.user import User
@@ -84,7 +84,7 @@ def create_expense(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    group = get_group_or_404(db, group_id)
+    group = get_group_or_404(db, group_id, lock=True)
     if group.settled_at is not None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Group is already settled"
@@ -148,7 +148,7 @@ def update_expense(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    group = get_group_or_404(db, group_id)
+    group = get_group_or_404(db, group_id, lock=True)
     require_membership(db, group_id, current_user.id)
     if group.settled_at is not None:
         raise HTTPException(
@@ -181,6 +181,10 @@ def update_expense(
 
     splits = _build_splits(body, member_ids)
 
+    db.add(ExpenseRevision(
+        expense_id=expense.id, changed_by=current_user.id,
+        snapshot=_expense_out(expense).model_dump(mode="json"),
+    ))
     expense.title = body.title.strip()
     expense.amount = body.amount.quantize(CENT)
     expense.currency = body.currency.upper()
@@ -203,7 +207,7 @@ def delete_expense(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    group = get_group_or_404(db, group_id)
+    group = get_group_or_404(db, group_id, lock=True)
     require_membership(db, group_id, current_user.id)
     if group.settled_at is not None:
         raise HTTPException(
@@ -226,5 +230,25 @@ def delete_expense(
     db.query(ExpenseSplit).filter(ExpenseSplit.expense_id == expense_id).delete(
         synchronize_session=False
     )
+    db.query(ExpenseRevision).filter(ExpenseRevision.expense_id == expense_id).delete(synchronize_session=False)
     db.delete(expense)
     db.commit()
+
+
+@router.get("/{expense_id}/history")
+def expense_history(
+    group_id: str,
+    expense_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    get_group_or_404(db, group_id)
+    require_membership(db, group_id, current_user.id)
+    if db.query(Expense.id).filter(Expense.id == expense_id, Expense.group_id == group_id).first() is None:
+        raise HTTPException(status_code=404, detail="Expense not found")
+    rows = db.query(ExpenseRevision, User.username).join(
+        User, User.id == ExpenseRevision.changed_by
+    ).filter(ExpenseRevision.expense_id == expense_id).order_by(ExpenseRevision.changed_at.desc()).all()
+    return [dict(id=r.id, expense_id=r.expense_id, changed_by=r.changed_by,
+                 changed_by_username=username, changed_at=r.changed_at, snapshot=r.snapshot)
+            for r, username in rows]

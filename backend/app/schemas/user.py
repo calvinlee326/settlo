@@ -46,14 +46,6 @@ class SetUsernameRequest(BaseModel):
     username: str = Field(min_length=1, max_length=50)
 
 
-class RefreshRequest(BaseModel):
-    refresh_token: str
-
-
-class LogoutRequest(BaseModel):
-    refresh_token: str | None = None
-
-
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -66,7 +58,6 @@ class UserOut(BaseModel):
 class TokenResponse(BaseModel):
     is_new_user: bool
     access_token: str
-    refresh_token: str
     token_type: str = "bearer"
     user: UserOut
 

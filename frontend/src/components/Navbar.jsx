@@ -4,8 +4,9 @@ import api from '../api/axios';
 import useAuthStore from '../store/authStore';
 
 export default function Navbar() {
-  const { user, refreshToken, clearAuth } = useAuthStore();
+  const { user, clearAuth } = useAuthStore();
   const navigate = useNavigate();
+  const [logoutError, setLogoutError] = useState('');
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [requestCount, setRequestCount] = useState(0);
@@ -63,12 +64,14 @@ export default function Navbar() {
   }, [menuOpen]);
 
   const handleLogout = async () => {
-    setMenuOpen(false);
+    setLogoutError('');
     try {
-      await api.post('/auth/logout', { refresh_token: refreshToken });
+      await api.post('/auth/logout');
     } catch {
-      // Token may already be expired; clear local state regardless
+      setLogoutError('Logout failed. Please try again.');
+      return;
     }
+    setMenuOpen(false);
     clearAuth();
     navigate('/login');
   };
@@ -136,6 +139,7 @@ export default function Navbar() {
                   >
                     Settings
                   </button>
+                  {logoutError && <p role="alert" className="px-4 py-2 text-sm">{logoutError}</p>}
                   <button
                     onClick={handleLogout}
                     className="block w-full px-4 py-2.5 text-left text-sm text-ink transition-colors hover:bg-sunk"

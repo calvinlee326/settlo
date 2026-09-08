@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import func
+from sqlalchemy import func, or_, and_
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.security import get_current_user
@@ -11,6 +11,8 @@ from app.models.friendship import Friendship, FriendshipStatus
 from app.models.user import User, utcnow
 from app.routers.expenses import _expense_out
 from app.schemas.expense import ExpenseOut
+from app.schemas.settlement import SettlementOut
+from app.routers.settlements import _settlement_out
 from app.schemas.friend import FriendOut, FriendRequestCreate, FriendRequestOut
 from app.services import friends as friends_svc
 
@@ -180,6 +182,10 @@ def settle_with_friend(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Friend not found"
         )
+    db.query(Friendship).filter(
+        or_(and_(Friendship.requester_id == current_user.id, Friendship.addressee_id == friend_id),
+            and_(Friendship.requester_id == friend_id, Friendship.addressee_id == current_user.id))
+    ).with_for_update().first()
     balance = friends_svc.friend_balance(db, current_user.id, friend_id)
     if balance == Decimal("0.00"):
         raise HTTPException(
@@ -200,6 +206,7 @@ def settle_with_friend(
             amount=amount,
             is_paid=True,
             paid_at=utcnow(),
+            recorded_by=current_user.id,
         )
     )
     db.commit()
@@ -238,3 +245,52 @@ def friend_expenses(
         .all()
     )
     return [_expense_out(e) for e in expenses]
+
+
+@router.get("/{friend_id}/settlements", response_model=list[SettlementOut])
+def friend_settlements(
+    friend_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if not friends_svc.are_friends(db, current_user.id, friend_id):
+        raise HTTPException(status_code=404, detail="Friend not found")
+    rows = db.query(Settlement).filter(
+        Settlement.group_id.is_(None),
+        or_(and_(Settlement.from_user == current_user.id, Settlement.to_user == friend_id),
+            and_(Settlement.from_user == friend_id, Settlement.to_user == current_user.id)),
+        or_(Settlement.is_paid.is_(True), Settlement.reversed_at.is_not(None)),
+    ).order_by(Settlement.created_at.desc()).all()
+    users = db.query(User).filter(User.id.in_([current_user.id, friend_id])).all()
+    return [_settlement_out(s, {u.id: u.username for u in users}) for s in rows]
+
+
+@router.post("/{friend_id}/settlements/{settlement_id}/reverse", response_model=SettlementOut)
+def reverse_friend_payment(
+    friend_id: str,
+    settlement_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    friendship = db.query(Friendship).filter(
+        Friendship.status == FriendshipStatus.ACCEPTED,
+        or_(and_(Friendship.requester_id == current_user.id, Friendship.addressee_id == friend_id),
+            and_(Friendship.requester_id == friend_id, Friendship.addressee_id == current_user.id)),
+    ).with_for_update().first()
+    if friendship is None:
+        raise HTTPException(status_code=404, detail="Friend not found")
+    settlement = db.query(Settlement).filter(
+        Settlement.id == settlement_id, Settlement.group_id.is_(None),
+        or_(and_(Settlement.from_user == current_user.id, Settlement.to_user == friend_id),
+            and_(Settlement.from_user == friend_id, Settlement.to_user == current_user.id)),
+    ).first()
+    if settlement is None:
+        raise HTTPException(status_code=404, detail="Settlement not found")
+    if not settlement.is_paid or settlement.reversed_at is not None:
+        raise HTTPException(status_code=400, detail="Payment is not active")
+    settlement.is_paid = False
+    settlement.reversed_by = current_user.id
+    settlement.reversed_at = utcnow()
+    db.commit()
+    users = db.query(User).filter(User.id.in_([current_user.id, friend_id])).all()
+    return _settlement_out(settlement, {u.id: u.username for u in users})

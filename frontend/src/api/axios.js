@@ -7,6 +7,7 @@ const API_BASE_URL =
 const api = axios.create({
   baseURL: `${API_BASE_URL}/api`,
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,
 });
 
 api.interceptors.request.use((config) => {
@@ -20,13 +21,31 @@ api.interceptors.request.use((config) => {
 let refreshPromise = null;
 
 async function refreshAccessToken() {
-  const { refreshToken } = useAuthStore.getState();
-  if (!refreshToken) throw new Error('No refresh token');
-  const { data } = await axios.post(`${API_BASE_URL}/api/auth/refresh`, {
-    refresh_token: refreshToken,
-  });
-  useAuthStore.getState().setAccessToken(data.access_token);
-  return data.access_token;
+  if (!refreshPromise) {
+    refreshPromise = axios.post(`${API_BASE_URL}/api/auth/refresh`, null, {
+      withCredentials: true,
+    }).then(({ data }) => {
+      useAuthStore.getState().setAccessToken(data.access_token);
+      return data.access_token;
+    }).finally(() => { refreshPromise = null; });
+  }
+  return refreshPromise;
+}
+
+export async function initializeSession() {
+  useAuthStore.getState().setSessionStatus('loading');
+  try {
+    await refreshAccessToken();
+    const { data } = await api.get('/auth/me', { _retry: true });
+    useAuthStore.getState().setUser(data);
+    useAuthStore.getState().setSessionStatus('ready');
+  } catch (error) {
+    if (error.response?.status === 401) {
+      useAuthStore.getState().clearAuth();
+    } else {
+      useAuthStore.getState().setSessionStatus('error');
+    }
+  }
 }
 
 api.interceptors.response.use(
@@ -36,24 +55,23 @@ api.interceptors.response.use(
     const isAuthRoute =
       original?.url?.includes('/auth/send-otp') ||
       original?.url?.includes('/auth/verify-otp') ||
-      original?.url?.includes('/auth/refresh');
+      original?.url?.includes('/auth/refresh') ||
+      original?.url?.includes('/auth/logout');
 
     if (
       error.response?.status === 401 &&
-      !original._retry &&
+      original && !original._retry &&
       !isAuthRoute
     ) {
       original._retry = true;
       try {
-        refreshPromise = refreshPromise || refreshAccessToken();
-        const token = await refreshPromise;
-        refreshPromise = null;
+        const token = await refreshAccessToken();
         original.headers.Authorization = `Bearer ${token}`;
         return api(original);
       } catch (refreshError) {
-        refreshPromise = null;
-        useAuthStore.getState().clearAuth();
-        window.location.href = '/login';
+        if (refreshError.response?.status === 401) {
+          useAuthStore.getState().clearAuth();
+        }
         return Promise.reject(refreshError);
       }
     }

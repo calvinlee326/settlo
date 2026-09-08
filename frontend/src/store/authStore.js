@@ -1,35 +1,19 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 
-const useAuthStore = create(
-  persist(
-    (set) => ({
-      user: null,
-      accessToken: null,
-      refreshToken: null,
+localStorage.removeItem('settlo-auth');
 
-      setAuth: ({ user, accessToken, refreshToken }) =>
-        set({ user, accessToken, refreshToken }),
-
-      setUser: (user) => set({ user }),
-
-      setAccessToken: (accessToken) => set({ accessToken }),
-
-      clearAuth: () => set({ user: null, accessToken: null, refreshToken: null }),
-    }),
-    {
-      name: 'settlo-auth',
-      // Keep the short-lived access token in memory only; it is re-minted
-      // from the refresh token by the axios 401 interceptor after a reload.
-      partialize: (state) => ({
-        user: state.user,
-        refreshToken: state.refreshToken,
-      }),
-    }
-  )
-);
+const useAuthStore = create((set) => ({
+  user: null,
+  accessToken: null,
+  sessionStatus: 'loading',
+  setAuth: ({ user, accessToken }) => set({ user, accessToken, sessionStatus: 'ready' }),
+  setUser: (user) => set({ user }),
+  setAccessToken: (accessToken) => set({ accessToken }),
+  setSessionStatus: (sessionStatus) => set({ sessionStatus }),
+  clearAuth: () => set({ user: null, accessToken: null, sessionStatus: 'ready' }),
+}));
 
 export const useIsAuthenticated = () =>
-  useAuthStore((s) => Boolean(s.accessToken || s.refreshToken));
+  useAuthStore((s) => Boolean(s.accessToken));
 
 export default useAuthStore;

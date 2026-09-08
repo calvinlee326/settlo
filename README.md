@@ -33,7 +33,7 @@ uvicorn app.main:app --reload
 
 The API runs at http://localhost:8000 (docs at http://localhost:8000/docs).
 
-`.env.example` ships a PostgreSQL URL. For local development set `DATABASE_URL=sqlite:///./settlo.db` and a `SECRET_KEY` of at least 32 characters. For production, use a managed PostgreSQL URL such as `postgresql+psycopg://...`.
+`.env.example` ships a PostgreSQL URL. For local development set `DATABASE_URL=sqlite:///./settlo.db` and a `SECRET_KEY` of at least 32 characters. For local HTTP, also set `REFRESH_COOKIE_SECURE=false` and `REFRESH_COOKIE_SAMESITE=lax`. For production, use a managed PostgreSQL URL such as `postgresql+psycopg://...`.
 
 To log in locally without a Twilio account, also set `DEV_OTP_CODE=000000`. `/verify` then accepts that fixed code for any phone number and no SMS is sent. Startup rejects it unless `DATABASE_URL` is SQLite, so it cannot be turned on in production.
 
@@ -76,7 +76,8 @@ Set these variables on the Railway service:
 - `SECRET_KEY` — long random string (placeholder values are rejected at startup).
 - `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_VERIFY_SERVICE_SID` — Twilio Verify credentials for OTP delivery.
 - `FRONTEND_URL` — the deployed frontend origin (e.g. `https://settlo-sooty.vercel.app`, no trailing slash). Required for CORS; requests from other origins are rejected.
-- `EXTRA_ORIGINS` — optional comma-separated list of additional allowed origins.
+- `EXTRA_ORIGINS` — optional comma-separated list of additional trusted origins. These origins can also use the cookie authentication endpoints; do not use wildcards.
+- `REFRESH_COOKIE_SECURE=true` and `REFRESH_COOKIE_SAMESITE=none` — defaults required for the current cross-site Vercel/Railway deployment. `SameSite=none` with an insecure cookie is rejected at startup. Browsers that block third-party cookies may prevent session restoration; deploy frontend and API under the same site (for example `app.example.com` and `api.example.com`) to support those browsers reliably.
 
 ### Frontend (Vercel)
 
@@ -107,7 +108,9 @@ Phone-number login with OTP — no passwords.
 1. Enter your phone number on `/login`.
 2. A 6-digit OTP is delivered through Twilio Verify.
 3. Enter the code on `/verify`. First-time numbers get an account automatically and are asked for a display name.
-4. The app receives a 30-minute access token and a 7-day refresh token; refresh is automatic.
+4. The app keeps a 30-minute access token in memory. A 7-day refresh token is set only as an HttpOnly cookie, scoped to `/api/auth`; it never appears in JSON or browser JavaScript storage. On reload the app restores the session using `/refresh` and `/me` before routing. Connection failures show a retry option without discarding the session.
+
+Existing sessions stored in `settlo-auth` localStorage are removed on startup; users of the previous version need to sign in once. Refresh tokens in request bodies are no longer accepted. Verification, refresh, and logout require an exact trusted `Origin` header (including API clients). Logout revokes the cookie token and supplied access token before clearing the cookie; a network failure leaves logout available to retry.
 
 Security: OTP is delivered and checked by Twilio Verify, OTP sends are rate-limited, logout blacklists tokens, and tokens are not persisted in browser storage.
 

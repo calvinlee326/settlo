@@ -16,8 +16,6 @@ export default function VerifyPage() {
   const setUser = useAuthStore((s) => s.setUser);
   const user = useAuthStore((s) => s.user);
   const isAuthenticated = useIsAuthenticated();
-  // Derived from the persisted user so a reload mid-onboarding keeps the
-  // username step instead of bouncing a half-onboarded user to home.
   const needsUsername = isAuthenticated && user && !user.username;
 
   const phone = sessionStorage.getItem('settlo-phone');
@@ -38,7 +36,6 @@ export default function VerifyPage() {
       setAuth({
         user: data.user,
         accessToken: data.access_token,
-        refreshToken: data.refresh_token,
       });
       if (!data.is_new_user) {
         sessionStorage.removeItem('settlo-phone');
