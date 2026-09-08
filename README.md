@@ -4,7 +4,7 @@ Split bills for dinners, trips, and more — in groups or one-on-one with friend
 
 ## Features
 
-- **Groups** — create a group, add expenses (split equally or with custom amounts), edit or remove them, and settle up with the fewest transactions.
+- **Groups** — create a group, add expenses (split equally between any subset of members, or with custom amounts), edit or remove them, and settle up with the fewest transactions.
 - **Balances at a glance** — the home screen shows what you owe or are owed in each group, plus an overall net figure.
 - **Friends & direct expenses** — add friends by phone, log one-on-one expenses outside any group, and track a running balance per friend.
 - **Invitations** — invite someone to a group by phone (a pending invite appears on their home screen), by scanning a QR code, or by adding an existing friend.
@@ -116,6 +116,8 @@ Security: OTP is delivered and checked by Twilio Verify, OTP sends are rate-limi
 
 ## Settlement Algorithm
 
+Settlo never moves money; recording a payment only tells Settlo that it happened elsewhere.
+
 Each member's net balance = total paid − total owed. A greedy max-heap matching pairs the largest creditor with the largest debtor repeatedly, settling the group in at most n−1 transactions instead of the naive n². Settlements marked as paid are factored into future calculations.
 
 This is a heuristic, not an optimum: finding the true minimum number of transactions is NP-hard (it reduces to set partition), so there are balance sets a subset-matching pass would settle in fewer transfers. The n−1 bound is a worst case that holds for any input, which is the guarantee worth having here.
@@ -140,8 +142,10 @@ This is a heuristic, not an optimum: finding the true minimum number of transact
 | PUT | /api/groups/{id}/expenses/{eid} | Edit expense |
 | DELETE | /api/groups/{id}/expenses/{eid} | Delete expense |
 | GET | /api/groups/{id}/settlements/ | Calculate settlements |
-| POST | /api/groups/{id}/settlements/confirm | Settle the group and archive it |
-| POST | /api/groups/{id}/settlements/{sid}/pay | Mark paid |
+| POST | /api/groups/{id}/settlements/confirm | Archive the group (requires every balance settled) |
+| POST | /api/groups/{id}/settlements/{sid}/pay | Record one payment |
+| POST | /api/groups/{id}/settlements/{sid}/reverse | Undo a recorded payment |
+| GET | /api/groups/{id}/expenses/{eid}/history | Previous versions of an expense |
 | POST/GET | /api/group-invitations | Invite by phone / list my pending invites |
 | POST | /api/group-invitations/{id}/accept | Accept group invite |
 | POST | /api/group-invitations/{id}/decline | Decline group invite |
