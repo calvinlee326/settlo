@@ -103,22 +103,29 @@ def _add_member(db: Session, group: Group, user_id: str) -> None:
         .all()
     )
     prior_ids = {uid for uid in member_ids if uid != user_id}
-    for e in equal_expenses:
-        split_ids = {
-            row.user_id
-            for row in db.query(ExpenseSplit.user_id)
-            .filter(ExpenseSplit.expense_id == e.id)
+    split_ids_by_expense: dict[str, set[str]] = {}
+    if equal_expenses:
+        rows = (
+            db.query(ExpenseSplit.expense_id, ExpenseSplit.user_id)
+            .filter(ExpenseSplit.expense_id.in_([e.id for e in equal_expenses]))
             .all()
-        }
-        # An equal expense deliberately split between a subset of the group
-        # keeps that subset; only group-wide ones absorb the new member.
-        if split_ids != prior_ids:
-            continue
-        db.query(ExpenseSplit).filter(ExpenseSplit.expense_id == e.id).delete(
-            synchronize_session=False
         )
-        for uid, amount in equal_split(Decimal(e.amount), member_ids):
-            db.add(ExpenseSplit(expense_id=e.id, user_id=uid, amount=amount))
+        for expense_id, split_user_id in rows:
+            split_ids_by_expense.setdefault(expense_id, set()).add(split_user_id)
+
+    # An equal expense deliberately split between a subset of the group keeps
+    # that subset; only group-wide ones absorb the new member.
+    widening = [
+        e for e in equal_expenses
+        if split_ids_by_expense.get(e.id, set()) == prior_ids
+    ]
+    if widening:
+        db.query(ExpenseSplit).filter(
+            ExpenseSplit.expense_id.in_([e.id for e in widening])
+        ).delete(synchronize_session=False)
+        for e in widening:
+            for uid, amount in equal_split(Decimal(e.amount), member_ids):
+                db.add(ExpenseSplit(expense_id=e.id, user_id=uid, amount=amount))
 
 
 def _member_out(membership: Membership) -> MemberOut:

@@ -8,7 +8,7 @@ os.environ.setdefault("SECRET_KEY", "test-secret-key-for-expense-edit")
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -135,6 +135,44 @@ class ExpenseEditTest(unittest.TestCase):
             {self.a.id, self.b.id},
         )
         self.assertEqual(len(by_id[group_wide["id"]]["splits"]), 4)
+
+    def test_joining_does_not_scale_queries_with_expense_count(self):
+        """Guards the batched re-split: a per-expense lookup would grow this."""
+        def group_with_expenses(token, count, joiner_phone):
+            group = Group(name=token, created_by=self.a.id, invite_token=token)
+            self.db.add(group)
+            self.db.flush()
+            for user in (self.a, self.b):
+                self.db.add(Membership(group_id=group.id, user_id=user.id))
+            joiner = User(phone_number=joiner_phone, username=token)
+            self.db.add(joiner)
+            self.db.commit()
+            for _ in range(count):
+                res = self.client.post(
+                    f"/api/groups/{group.id}/expenses/",
+                    json={"title": "E", "amount": "30.00", "paid_by": self.a.id,
+                          "split_type": "EQUAL"},
+                    headers=self._auth(self.a),
+                )
+                self.assertEqual(res.status_code, 201, res.text)
+
+            statements = []
+            listener = lambda c, cur, stmt, params, ctx, many: statements.append(stmt)
+            event.listen(self.engine, "before_cursor_execute", listener)
+            try:
+                res = self.client.post(f"/api/groups/join/{token}",
+                                       headers=self._auth(joiner))
+            finally:
+                event.remove(self.engine, "before_cursor_execute", listener)
+            self.assertEqual(res.status_code, 200, res.text)
+            deletes = [q for q in statements if q.strip().upper().startswith("DELETE")]
+            return len(statements), len(deletes)
+
+        few_queries, few_deletes = group_with_expenses("few-exp", 2, "+15550000005")
+        many_queries, many_deletes = group_with_expenses("many-exp", 20, "+15550000006")
+
+        self.assertEqual((few_deletes, many_deletes), (1, 1))
+        self.assertEqual(few_queries, many_queries)
 
     def test_edit_replaces_amount_payer_and_splits(self):
         expense = self._add_expense(self.a)
