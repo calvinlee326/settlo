@@ -23,6 +23,9 @@ export default function GroupDetailPage() {
   const [invitePhone, setInvitePhone] = useState('');
   const [inviteFriendId, setInviteFriendId] = useState('');
   const [inviteNotice, setInviteNotice] = useState('');
+  // ponytail: one busy flag for the whole page. Split per-action if two
+  // of these ever need to run at once.
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     api
@@ -40,6 +43,7 @@ export default function GroupDetailPage() {
       setError('Enter a valid 10-digit US phone number');
       return;
     }
+    setBusy(true);
     try {
       await api.post('/group-invitations', {
         group_id: id,
@@ -49,22 +53,29 @@ export default function GroupDetailPage() {
       setInviteNotice('Invite sent');
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to send invite');
+    } finally {
+      setBusy(false);
     }
   };
 
   const addFriend = async (friendId) => {
     setError('');
+    setBusy(true);
     try {
       const { data } = await api.post(`/groups/${id}/members`, { user_id: friendId });
       setGroup(data);
+      setInviteFriendId('');
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to add friend');
+    } finally {
+      setBusy(false);
     }
   };
 
   const removeMember = async (memberId, name) => {
     if (!window.confirm(`Remove ${name} from this group?`)) return;
     setError('');
+    setBusy(true);
     try {
       await api.delete(`/groups/${id}/members/${memberId}`);
       setGroup((g) => ({
@@ -74,6 +85,8 @@ export default function GroupDetailPage() {
       }));
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to remove member');
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -97,41 +110,55 @@ export default function GroupDetailPage() {
   }, [load]);
 
   const handleInvite = async () => {
+    setError('');
+    setBusy(true);
     try {
       const { data } = await api.get(`/groups/${id}/invite`);
       setInviteLink(`${window.location.origin}/invite/${data.invite_token}`);
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to get invite link');
+    } finally {
+      setBusy(false);
     }
   };
 
   const handleDeleteExpense = async (expenseId) => {
     if (!window.confirm('Delete this expense?')) return;
+    setError('');
+    setBusy(true);
     try {
       await api.delete(`/groups/${id}/expenses/${expenseId}`);
       setExpenses((prev) => prev.filter((e) => e.id !== expenseId));
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to delete expense');
+    } finally {
+      setBusy(false);
     }
   };
 
   const handleDeleteGroup = async () => {
     if (!window.confirm('Delete this group and all its expenses?')) return;
+    setError('');
+    setBusy(true);
     try {
       await api.delete(`/groups/${id}`);
       navigate('/');
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to delete group');
+      setBusy(false);
     }
   };
 
   const leaveGroup = async () => {
     if (!window.confirm('Leave this group?')) return;
+    setError('');
+    setBusy(true);
     try {
       await api.delete(`/groups/${id}/members/${user.id}`);
       navigate('/');
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to leave group');
+      setBusy(false);
     }
   };
 
@@ -159,14 +186,16 @@ export default function GroupDetailPage() {
           {isCreator ? (
             <button
               onClick={handleDeleteGroup}
-              className="text-[13px] font-medium text-muted transition-colors hover:text-ink"
+              disabled={busy}
+              className="text-[13px] font-medium text-muted transition-colors hover:text-ink disabled:opacity-40"
             >
               Delete
             </button>
           ) : !isSettled ? (
             <button
               onClick={leaveGroup}
-              className="text-[13px] font-medium text-muted transition-colors hover:text-ink"
+              disabled={busy}
+              className="text-[13px] font-medium text-muted transition-colors hover:text-ink disabled:opacity-40"
             >
               Leave
             </button>
@@ -179,8 +208,9 @@ export default function GroupDetailPage() {
                 {isCreator && !isSettled && member.id !== group.created_by && (
                   <button
                     onClick={() => removeMember(member.id, member.username || 'this member')}
+                    disabled={busy}
                     aria-label={`Remove ${member.username || 'member'}`}
-                    className="absolute -right-1 -top-1 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-ink text-[11px] font-bold leading-none text-white ring-2 ring-white"
+                    className="absolute -right-1 -top-1 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-ink text-[11px] font-bold leading-none text-white ring-2 ring-white disabled:opacity-40"
                   >
                     ×
                   </button>
@@ -194,7 +224,8 @@ export default function GroupDetailPage() {
           ))}
           <button
             onClick={handleInvite}
-            className="flex h-8 w-8 shrink-0 items-center justify-center self-start rounded-full border-2 border-dashed border-rule-strong text-muted transition-colors hover:border-rule-strong hover:text-ink"
+            disabled={busy}
+            className="flex h-8 w-8 shrink-0 items-center justify-center self-start rounded-full border-2 border-dashed border-rule-strong text-muted transition-colors hover:border-rule-strong hover:text-ink disabled:opacity-40"
             aria-label="Show invite link"
           >
             +
@@ -271,9 +302,10 @@ export default function GroupDetailPage() {
               <p className="text-[13px] text-muted">Scan to join</p>
             </div>
             <div className="space-y-2 border-t border-rule pt-3">
-              <p className="text-[13px] font-medium text-muted">Invite by phone</p>
+              <label htmlFor="invite-phone" className="block text-[13px] font-medium text-muted">Invite by phone</label>
               <div className="flex gap-2">
                 <input
+                  id="invite-phone"
                   type="tel"
                   inputMode="numeric"
                   placeholder="909-555-0101"
@@ -283,13 +315,14 @@ export default function GroupDetailPage() {
                 />
                 <button
                   onClick={sendPhoneInvite}
-                  disabled={!invitePhone.trim()}
+                  disabled={busy || !invitePhone.trim()}
                   className="shrink-0 rounded-xl bg-ink px-4 py-2 text-[13px] font-medium text-white transition-opacity hover:opacity-80 disabled:opacity-40"
                 >
-                  Invite
+                  {busy ? 'Sending…' : 'Invite'}
                 </button>
               </div>
               {inviteNotice && <p className="text-[12px] text-ink">{inviteNotice}</p>}
+              <ErrorMessage message={error} />
             </div>
             {(() => {
               if (friends.length === 0) return null;
@@ -297,7 +330,7 @@ export default function GroupDetailPage() {
               const addable = friends.filter((f) => !memberIds.has(f.id));
               return (
                 <div className="space-y-2 border-t border-rule pt-3">
-                  <p className="text-[13px] font-medium text-muted">Add a friend</p>
+                  <label htmlFor="invite-friend" className="block text-[13px] font-medium text-muted">Add a friend</label>
                   {addable.length === 0 ? (
                     <p className="text-[13px] text-muted">
                       All your friends are already in this group.
@@ -305,6 +338,7 @@ export default function GroupDetailPage() {
                   ) : (
                     <div className="flex gap-2">
                       <select
+                        id="invite-friend"
                         value={inviteFriendId}
                         onChange={(e) => setInviteFriendId(e.target.value)}
                         className="min-w-0 flex-1 rounded-xl bg-sunk px-3 py-2 text-[13px] text-ink outline-none"
@@ -317,11 +351,11 @@ export default function GroupDetailPage() {
                         ))}
                       </select>
                       <button
-                        onClick={() => { addFriend(inviteFriendId); setInviteFriendId(''); }}
-                        disabled={!inviteFriendId}
+                        onClick={() => addFriend(inviteFriendId)}
+                        disabled={busy || !inviteFriendId}
                         className="shrink-0 rounded-xl bg-ink px-4 py-2 text-[13px] font-medium text-white transition-opacity hover:opacity-80 disabled:opacity-40"
                       >
-                        Add
+                        {busy ? 'Adding…' : 'Add'}
                       </button>
                     </div>
                   )}
