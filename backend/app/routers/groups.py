@@ -102,7 +102,18 @@ def _add_member(db: Session, group: Group, user_id: str) -> None:
         .filter(Expense.group_id == group.id, Expense.split_type == SplitType.EQUAL)
         .all()
     )
+    prior_ids = {uid for uid in member_ids if uid != user_id}
     for e in equal_expenses:
+        split_ids = {
+            row.user_id
+            for row in db.query(ExpenseSplit.user_id)
+            .filter(ExpenseSplit.expense_id == e.id)
+            .all()
+        }
+        # An equal expense deliberately split between a subset of the group
+        # keeps that subset; only group-wide ones absorb the new member.
+        if split_ids != prior_ids:
+            continue
         db.query(ExpenseSplit).filter(ExpenseSplit.expense_id == e.id).delete(
             synchronize_session=False
         )

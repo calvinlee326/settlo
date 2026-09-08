@@ -18,6 +18,7 @@ class ExpenseCreate(BaseModel):
     paid_by: str
     split_type: SplitType = SplitType.EQUAL
     splits: list[SplitInput] | None = None
+    participants: list[str] | None = None
 
 
 class SplitOut(BaseModel):

@@ -46,7 +46,27 @@ def _build_splits(
     total = body.amount.quantize(CENT)
 
     if body.split_type == SplitType.EQUAL:
-        return equal_split(total, member_ids)
+        # Direct expenses reuse this helper and always split between exactly the
+        # two people already in member_ids, so they carry no participants field.
+        chosen = getattr(body, "participants", None)
+        if chosen is None:
+            return equal_split(total, member_ids)
+        participants = list(dict.fromkeys(chosen))
+        if not participants:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Pick at least one person to split between",
+            )
+        unknown = set(participants) - set(member_ids)
+        if unknown:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Split includes a user who is not a group member",
+            )
+        # Preserve the caller's member order so the extra rounding cents land
+        # deterministically rather than in request order.
+        ordered = [uid for uid in member_ids if uid in set(participants)]
+        return equal_split(total, ordered)
 
     if not body.splits:
         raise HTTPException(
@@ -93,7 +113,10 @@ def create_expense(
 
     member_ids = [
         m.user_id
-        for m in db.query(Membership).filter(Membership.group_id == group_id).all()
+        for m in db.query(Membership)
+        .filter(Membership.group_id == group_id)
+        .order_by(Membership.joined_at)
+        .all()
     ]
     if body.paid_by not in member_ids:
         raise HTTPException(
@@ -171,7 +194,10 @@ def update_expense(
 
     member_ids = [
         m.user_id
-        for m in db.query(Membership).filter(Membership.group_id == group_id).all()
+        for m in db.query(Membership)
+        .filter(Membership.group_id == group_id)
+        .order_by(Membership.joined_at)
+        .all()
     ]
     if body.paid_by not in member_ids:
         raise HTTPException(
