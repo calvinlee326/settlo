@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/axios';
 import ErrorMessage from '../components/ErrorMessage';
@@ -7,9 +7,11 @@ import { SkeletonList } from '../components/LoadingSpinner';
 
 export default function HomePage() {
   const [groups, setGroups] = useState([]);
+  const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [invites, setInvites] = useState([]);
+  const [expenseGroupId, setExpenseGroupId] = useState('');
 
   const loadInvites = () =>
     api
@@ -35,35 +37,142 @@ export default function HomePage() {
   };
 
   useEffect(() => {
-    api
-      .get('/groups/')
-      .then(({ data }) => setGroups(data))
+    Promise.all([api.get('/groups/'), api.get('/friends')])
+      .then(([groupsRes, friendsRes]) => {
+        setGroups(groupsRes.data);
+        setFriends(friendsRes.data);
+      })
       .catch((err) =>
         setError(err.response?.data?.detail || 'Failed to load groups')
       )
       .finally(() => setLoading(false));
   }, []);
 
-  const activeGroups = groups.filter((g) => !g.settled_at);
-  const netBalance = activeGroups.reduce(
-    (sum, g) => sum + (g.my_balance || 0),
-    0
+  const activeGroups = useMemo(
+    () => groups.filter((g) => !g.settled_at),
+    [groups]
   );
+
+  // Group balances and friend balances never overlap: friend net_balance counts
+  // only direct expenses (group_id is null), so summing both double-counts nothing.
+  const outstanding = useMemo(() => {
+    const fromGroups = activeGroups
+      .filter((g) => Math.abs(g.my_balance || 0) >= 0.005)
+      .map((g) => ({
+        key: `group-${g.id}`,
+        name: g.name,
+        balance: g.my_balance,
+        to: `/groups/${g.id}/settle`,
+      }));
+    const fromFriends = friends
+      .filter((f) => Math.abs(f.net_balance || 0) >= 0.005)
+      .map((f) => ({
+        key: `friend-${f.id}`,
+        name: f.username || f.phone_number,
+        balance: f.net_balance,
+        to: '/friends',
+      }));
+    return [...fromGroups, ...fromFriends].sort(
+      (a, b) => Math.abs(b.balance) - Math.abs(a.balance)
+    );
+  }, [activeGroups, friends]);
+
+  const owed = outstanding
+    .filter((o) => o.balance > 0)
+    .reduce((sum, o) => sum + o.balance, 0);
+  const owe = outstanding
+    .filter((o) => o.balance < 0)
+    .reduce((sum, o) => sum - o.balance, 0);
+
+  useEffect(() => {
+    if (!expenseGroupId && activeGroups.length > 0) {
+      setExpenseGroupId(activeGroups[0].id);
+    }
+  }, [activeGroups, expenseGroupId]);
 
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-[28px] font-semibold text-ink">My Groups</h1>
-        {activeGroups.length > 0 && (
-          <p className="mt-1 text-[15px] text-ink-soft">
-            {Math.abs(netBalance) < 0.005
-              ? 'You are settled up across all groups.'
-              : netBalance > 0
-                ? `Overall you're owed $${netBalance.toFixed(2)}.`
-                : `Overall you owe $${Math.abs(netBalance).toFixed(2)}.`}
-          </p>
+        <h1 className="text-[28px] font-semibold text-ink">Home</h1>
+        {!loading && (
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <div className="card p-4">
+              <p className="text-[13px] font-medium uppercase tracking-wide text-muted">
+                You owe
+              </p>
+              <p className="mt-1 text-[22px] font-semibold tabular-nums text-ink">
+                ${owe.toFixed(2)}
+              </p>
+            </div>
+            <div className="card p-4">
+              <p className="text-[13px] font-medium uppercase tracking-wide text-muted">
+                You&rsquo;re owed
+              </p>
+              <p className="mt-1 text-[22px] font-semibold tabular-nums text-ink">
+                ${owed.toFixed(2)}
+              </p>
+            </div>
+          </div>
         )}
       </div>
+
+      {!loading && (activeGroups.length > 0 || friends.length > 0) && (
+        <div className="card flex flex-wrap items-center gap-2 p-4">
+          {activeGroups.length > 0 && (
+            <>
+              <label htmlFor="expense-group" className="sr-only">
+                Group to add an expense to
+              </label>
+              <select
+                id="expense-group"
+                value={expenseGroupId}
+                onChange={(e) => setExpenseGroupId(e.target.value)}
+                className="min-w-0 flex-1 rounded-xl bg-sunk px-3 py-2 text-[13px] text-ink outline-none"
+              >
+                {activeGroups.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
+                  </option>
+                ))}
+              </select>
+              <Link
+                to={`/groups/${expenseGroupId || activeGroups[0].id}/expenses/new`}
+                className="shrink-0 rounded-xl bg-ink px-4 py-2 text-[13px] font-medium text-white transition-opacity hover:opacity-80"
+              >
+                Add expense
+              </Link>
+            </>
+          )}
+          <Link
+            to="/friends/expenses/new"
+            className="shrink-0 rounded-xl bg-sunk px-4 py-2 text-[13px] font-medium text-ink-soft transition-opacity hover:opacity-80"
+          >
+            With a friend
+          </Link>
+        </div>
+      )}
+
+      {outstanding.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="text-lg font-medium text-ink">Outstanding</h2>
+          {outstanding.map((item) => (
+            <Link
+              key={item.key}
+              to={item.to}
+              className="card flex items-center justify-between gap-3 p-4 transition-colors hover:border-rule-strong"
+            >
+              <span className="min-w-0 flex-1 truncate text-[15px] text-ink">
+                {item.name}
+              </span>
+              <span className="shrink-0 text-[13px] font-semibold tabular-nums text-ink">
+                {item.balance > 0
+                  ? `You're owed $${item.balance.toFixed(2)}`
+                  : `You owe $${Math.abs(item.balance).toFixed(2)}`}
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
       <ErrorMessage message={error} />
       {invites.length > 0 && (
         <div className="space-y-2">
@@ -124,6 +233,7 @@ export default function HomePage() {
         </div>
       ) : (
         <div className="space-y-3">
+          <h2 className="text-lg font-medium text-ink">My groups</h2>
           {activeGroups.map((group, i) => (
             <GroupCard
               key={group.id}
