@@ -19,11 +19,19 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
-    phone_number: Mapped[str] = mapped_column(
-        String(20), unique=True, nullable=False, index=True
+    phone_number: Mapped[str | None] = mapped_column(
+        String(20), unique=True, nullable=True, index=True
     )
+    google_sub: Mapped[str | None] = mapped_column(
+        String(255), unique=True, nullable=True, index=True
+    )
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     username: Mapped[str | None] = mapped_column(String(50), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+    @property
+    def google_linked(self) -> bool:
+        return self.google_sub is not None
 
 
 class OTPCode(Base):

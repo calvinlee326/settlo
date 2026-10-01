@@ -15,12 +15,19 @@ from app.database import get_db
 from app.models.user import TokenBlacklist, User
 from app.schemas.user import (
     AccessTokenResponse,
+    GoogleAuthRequest,
     SendOTPRequest,
     SendOTPResponse,
     SetUsernameRequest,
     TokenResponse,
     UserOut,
     VerifyOTPRequest,
+)
+from app.services.google_auth import (
+    GoogleAuthError,
+    GoogleUnavailableError,
+    verified_email,
+    verify_google_token,
 )
 from app.services.otp import (
     OTPDeliveryError,
@@ -85,6 +92,34 @@ def _blacklist(db: Session, token: str) -> None:
         db.add(TokenBlacklist(token=token, expired_at=expired_at))
 
 
+def _issue_session(response: Response, user: User) -> TokenResponse:
+    response.set_cookie(
+        REFRESH_COOKIE_NAME,
+        create_refresh_token(user.id),
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400,
+        httponly=True,
+        secure=settings.REFRESH_COOKIE_SECURE,
+        samesite=settings.REFRESH_COOKIE_SAMESITE,
+        path=REFRESH_COOKIE_PATH,
+    )
+    return TokenResponse(
+        is_new_user=user.username is None,
+        access_token=create_access_token(user.id),
+        user=UserOut.model_validate(user),
+    )
+
+
+def _google_claims(credential: str) -> dict:
+    try:
+        return verify_google_token(credential)
+    except GoogleUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
+        )
+    except GoogleAuthError as exc:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc))
+
+
 @router.post("/send-otp", response_model=SendOTPResponse)
 def send_otp(
     body: SendOTPRequest, request: Request, db: Session = Depends(get_db)
@@ -127,21 +162,48 @@ def verify_otp_endpoint(
         db.commit()
         db.refresh(user)
 
-    response.set_cookie(
-        REFRESH_COOKIE_NAME,
-        create_refresh_token(user.id),
-        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400,
-        httponly=True,
-        secure=settings.REFRESH_COOKIE_SECURE,
-        samesite=settings.REFRESH_COOKIE_SAMESITE,
-        path=REFRESH_COOKIE_PATH,
-    )
-    is_new_user = user.username is None
-    return TokenResponse(
-        is_new_user=is_new_user,
-        access_token=create_access_token(user.id),
-        user=UserOut.model_validate(user),
-    )
+    return _issue_session(response, user)
+
+
+@router.post("/google", response_model=TokenResponse)
+def google_login(
+    body: GoogleAuthRequest, request: Request, response: Response,
+    db: Session = Depends(get_db),
+):
+    _check_origin(request)
+    claims = _google_claims(body.credential)
+    user = db.query(User).filter(User.google_sub == claims["sub"]).first()
+    if user is None:
+        name = (claims.get("name") or "").strip()[:50]
+        user = User(
+            google_sub=claims["sub"],
+            email=verified_email(claims),
+            username=name or None,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    return _issue_session(response, user)
+
+
+@router.post("/google/link", response_model=UserOut)
+def link_google(
+    body: GoogleAuthRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    claims = _google_claims(body.credential)
+    owner = db.query(User).filter(User.google_sub == claims["sub"]).first()
+    if owner is not None and owner.id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This Google account is already linked to another Settlo account",
+        )
+    current_user.google_sub = claims["sub"]
+    current_user.email = verified_email(claims)
+    db.commit()
+    db.refresh(current_user)
+    return UserOut.model_validate(current_user)
 
 
 @router.post("/set-username", response_model=UserOut)

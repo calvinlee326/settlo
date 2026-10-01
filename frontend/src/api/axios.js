@@ -55,6 +55,7 @@ api.interceptors.response.use(
     const isAuthRoute =
       original?.url?.includes('/auth/send-otp') ||
       original?.url?.includes('/auth/verify-otp') ||
+      original?.url?.endsWith('/auth/google') ||
       original?.url?.includes('/auth/refresh') ||
       original?.url?.includes('/auth/logout');
 

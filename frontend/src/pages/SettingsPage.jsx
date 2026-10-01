@@ -4,6 +4,7 @@ import api from '../api/axios';
 import useAuthStore from '../store/authStore';
 import Button from '../components/Button';
 import ErrorMessage from '../components/ErrorMessage';
+import GoogleButton, { isGoogleEnabled } from '../components/GoogleButton';
 
 export default function SettingsPage() {
   const navigate = useNavigate();
@@ -33,6 +34,18 @@ export default function SettingsPage() {
       setError(err.response?.data?.detail || 'Could not save your name.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleLinkGoogle = async (credential) => {
+    setError('');
+    setNotice('');
+    try {
+      const { data } = await api.post('/auth/google/link', { credential });
+      setUser(data);
+      setNotice('Google account linked');
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Could not link Google account.');
     }
   };
 
@@ -74,6 +87,20 @@ export default function SettingsPage() {
           </Button>
         </div>
       </form>
+      {isGoogleEnabled && (
+        <div className="card space-y-3 p-6">
+          <h2 className="text-[13px] font-medium text-muted">Sign-in methods</h2>
+          <p className="text-sm text-ink">
+            Phone: {user?.phone_number || 'Not added'}
+          </p>
+          <p className="text-sm text-ink">
+            Google: {user?.google_linked ? user.email || 'Linked' : 'Not linked'}
+          </p>
+          {!user?.google_linked && (
+            <GoogleButton onCredential={handleLinkGoogle} text="signin_with" />
+          )}
+        </div>
+      )}
     </div>
   );
 }
