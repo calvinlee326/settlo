@@ -2,20 +2,24 @@
 
 Split bills for dinners, trips, and more — in groups or one-on-one with friends. Settlo calculates who owes whom in as few transactions as possible.
 
+Live: [settlo-sooty.vercel.app](https://settlo-sooty.vercel.app)
+
 ## Features
 
+- **Google sign-in & IDs** — sign in with Google; each user picks a unique, case-insensitive ID that friends use to find them.
 - **Groups** — create a group, add expenses (split equally between any subset of members, or with custom amounts), edit or remove them, and settle up with the fewest transactions.
 - **Balances at a glance** — the home screen shows what you owe or are owed in each group, plus an overall net figure.
 - **Friends & direct expenses** — add friends by ID, log one-on-one expenses outside any group, and track a running balance per friend.
 - **Invitations** — invite someone to a group by ID (a pending invite appears on their home screen), by sharing the group's invite link, or by adding an existing friend.
 - **Member management** — the creator can remove members and any member can leave a group; removal is blocked while that member still has expenses or settlements.
 - **Payment history** — settled groups are archived to a dedicated history page.
-- **PWA** — installable, mobile-first interface.
+- **PWA** — installable, mobile-first interface (on iPhone: open in Safari → **Share** → **Add to Home Screen**).
+- **Privacy policy** — public at `/privacy`, linked from the login page.
 
 ## Stack
 
-- **Backend:** Python 3.10+, FastAPI, SQLAlchemy, Alembic, SQLite (dev) / PostgreSQL (prod), JWT auth
-- **Frontend:** React 18, Vite, Tailwind CSS, React Router v6, Zustand, Axios, qrcode.react (PWA-ready)
+- **Backend:** Python 3.10+, FastAPI, SQLAlchemy, Alembic, SQLite (dev) / PostgreSQL (prod), JWT auth, Google ID token verification (PyJWT)
+- **Frontend:** React 18, Vite, Tailwind CSS, React Router v6, Zustand, Axios, Google Identity Services (PWA-ready)
 
 ## Quick Start
 
@@ -94,7 +98,7 @@ Sign-in is Google only — no passwords, no SMS.
 
 Refresh tokens in request bodies are not accepted. Sign-in, refresh, and logout require an exact trusted `Origin` header (including API clients). Logout revokes the cookie token and supplied access token before clearing the cookie; a network failure leaves logout available to retry.
 
-Setup: in Google Cloud Console, create an **OAuth client ID** of type *Web application*, add the frontend origins (e.g. `http://localhost`, `http://localhost:5173` and the Vercel URL) under **Authorized JavaScript origins**, and set the same client ID as `GOOGLE_CLIENT_ID` (backend) and `VITE_GOOGLE_CLIENT_ID` (frontend). The backend checks Google's signature, the audience and the issuer of each ID token.
+Setup: in Google Cloud Console, create an **OAuth client ID** of type *Web application*, add the frontend origins (e.g. `http://localhost`, `http://localhost:5173` and the Vercel URL) under **Authorized JavaScript origins**, and set the same client ID as `GOOGLE_CLIENT_ID` (backend) and `VITE_GOOGLE_CLIENT_ID` (frontend). The backend checks Google's signature, the audience and the issuer of each ID token. To let anyone outside the test-user list sign in, publish the OAuth app under **Audience**; Google requires the home page and the `/privacy` URL on the **Branding** page first.
 
 Security: Google ID tokens are verified server-side, logout blacklists tokens, and tokens are not persisted in browser storage.
 
