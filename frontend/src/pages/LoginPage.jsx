@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import useAuthStore, { useIsAuthenticated } from '../store/authStore';
 import ErrorMessage from '../components/ErrorMessage';
@@ -8,11 +8,14 @@ import GoogleButton, { isGoogleEnabled } from '../components/GoogleButton';
 export default function LoginPage() {
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  // ProtectedRoute sends people here with the page they were trying to open,
+  // e.g. a group invite link; return them there after sign-in.
+  const from = useLocation().state?.from || '/';
   const isAuthenticated = useIsAuthenticated();
   const setAuth = useAuthStore((s) => s.setAuth);
 
   if (isAuthenticated) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={from} replace />;
   }
 
   const handleGoogle = async (credential) => {
@@ -20,7 +23,7 @@ export default function LoginPage() {
     try {
       const { data } = await api.post('/auth/google', { credential });
       setAuth({ user: data.user, accessToken: data.access_token });
-      navigate('/', { replace: true });
+      navigate(from, { replace: true });
     } catch (err) {
       setError(err.response?.data?.detail || 'Google sign-in failed. Try again.');
     }
