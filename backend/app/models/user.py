@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Integer, String
+from sqlalchemy import DateTime, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -35,18 +35,6 @@ class User(Base):
     @property
     def google_linked(self) -> bool:
         return self.google_sub is not None
-
-
-class OTPCode(Base):
-    __tablename__ = "otp_codes"
-
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
-    phone_number: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
-    code: Mapped[str] = mapped_column(String(6), nullable=False)
-    expired_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    is_used: Mapped[bool] = mapped_column(Boolean, default=False)
-    failed_attempts: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class TokenBlacklist(Base):

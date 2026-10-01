@@ -142,7 +142,7 @@ export default function NewDirectExpensePage() {
                     if (!e.target.checked && paidBy === f.id) setPaidBy(user?.id);
                   }}
                 />
-                {f.username || f.phone_number}
+                {f.username || f.handle}
               </label>
             ))}
           </div>
@@ -160,7 +160,7 @@ export default function NewDirectExpensePage() {
             <option value={user?.id}>You</option>
             {payerOptions.map((f) => (
               <option key={f.id} value={f.id}>
-                {f.username || f.phone_number}
+                {f.username || f.handle}
               </option>
             ))}
           </select>

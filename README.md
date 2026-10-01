@@ -6,8 +6,8 @@ Split bills for dinners, trips, and more — in groups or one-on-one with friend
 
 - **Groups** — create a group, add expenses (split equally between any subset of members, or with custom amounts), edit or remove them, and settle up with the fewest transactions.
 - **Balances at a glance** — the home screen shows what you owe or are owed in each group, plus an overall net figure.
-- **Friends & direct expenses** — add friends by phone, log one-on-one expenses outside any group, and track a running balance per friend.
-- **Invitations** — invite someone to a group by ID or phone (a pending invite appears on their home screen), by sharing the group's invite link, or by adding an existing friend.
+- **Friends & direct expenses** — add friends by ID, log one-on-one expenses outside any group, and track a running balance per friend.
+- **Invitations** — invite someone to a group by ID (a pending invite appears on their home screen), by sharing the group's invite link, or by adding an existing friend.
 - **Member management** — the creator can remove members and any member can leave a group; removal is blocked while that member still has expenses or settlements.
 - **Payment history** — settled groups are archived to a dedicated history page.
 - **PWA** — installable, mobile-first interface.
@@ -35,7 +35,7 @@ The API runs at http://localhost:8000 (docs at http://localhost:8000/docs).
 
 `.env.example` ships a PostgreSQL URL. For local development set `DATABASE_URL=sqlite:///./settlo.db` and a `SECRET_KEY` of at least 32 characters. For local HTTP, also set `REFRESH_COOKIE_SECURE=false` and `REFRESH_COOKIE_SAMESITE=lax`. For production, use a managed PostgreSQL URL such as `postgresql+psycopg://...`.
 
-To log in locally without a Twilio account, also set `DEV_OTP_CODE=000000`. `/verify` then accepts that fixed code for any phone number and no SMS is sent. Startup rejects it unless `DATABASE_URL` is SQLite, so it cannot be turned on in production.
+To sign in locally, set `GOOGLE_CLIENT_ID` in `backend/.env` and the same value as `VITE_GOOGLE_CLIENT_ID` in `frontend/.env.local`, with `http://localhost` and `http://localhost:5173` as authorized origins (see Authentication below).
 
 ### Frontend
 
@@ -62,7 +62,7 @@ cd backend
 python -m unittest discover -s tests -t .
 ```
 
-The suite runs against in-memory SQLite and needs no Twilio credentials or running server.
+The suite runs against in-memory SQLite and needs no Google credentials or running server.
 
 ## Deployment
 
@@ -74,8 +74,7 @@ Set these variables on the Railway service:
 
 - `DATABASE_URL` — managed PostgreSQL URL. Plain `postgres://` URLs are converted to `postgresql+psycopg://` automatically for SQLAlchemy and Alembic.
 - `SECRET_KEY` — long random string (placeholder values are rejected at startup).
-- `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_VERIFY_SERVICE_SID` — Twilio Verify credentials for OTP delivery.
-- `GOOGLE_CLIENT_ID` — optional OAuth web client ID; enables Google sign-in (see below). Must match the frontend's `VITE_GOOGLE_CLIENT_ID`.
+- `GOOGLE_CLIENT_ID` — OAuth web client ID; required, since Google is the only way to sign in (see below). Must match the frontend's `VITE_GOOGLE_CLIENT_ID`.
 - `FRONTEND_URL` — the deployed frontend origin (e.g. `https://settlo-sooty.vercel.app`, no trailing slash). Required for CORS; requests from other origins are rejected.
 - `EXTRA_ORIGINS` — optional comma-separated list of additional trusted origins. These origins can also use the cookie authentication endpoints; do not use wildcards.
 - `REFRESH_COOKIE_SECURE=true` and `REFRESH_COOKIE_SAMESITE=none` — defaults required for the current cross-site Vercel/Railway deployment. `SameSite=none` with an insecure cookie is rejected at startup. Browsers that block third-party cookies may prevent session restoration; deploy frontend and API under the same site (for example `app.example.com` and `api.example.com`) to support those browsers reliably.
@@ -83,51 +82,43 @@ Set these variables on the Railway service:
 ### Frontend (Vercel)
 
 - Set `VITE_API_URL` to the Railway backend URL (e.g. `https://settlo-production.up.railway.app`).
-- Set `VITE_GOOGLE_CLIENT_ID` to show the Google button. Leave it unset to hide Google sign-in entirely.
+- Set `VITE_GOOGLE_CLIENT_ID` (required; the login page has no other way in). It is baked in at build time, so redeploy after changing it.
 - `frontend/vercel.json` rewrites all paths to `index.html` so client-side routes like `/login` work on direct load and refresh.
-
-## Twilio Verify Setup
-
-OTP delivery and verification are handled entirely by Twilio Verify — the backend never generates or stores OTP codes itself, and sending OTPs fails if Twilio is not configured. The one exception is the local `DEV_OTP_CODE` bypass described under Quick Start.
-
-1. Create an account at [twilio.com](https://www.twilio.com) and copy the **Account SID** and **Auth Token** from the Console dashboard.
-2. In the Console, go to **Verify → Services**, create a new Verify Service, and copy its **Service SID** (starts with `VA`).
-3. Set the values in `backend/.env` (local) or the Railway service variables (production):
-
-```bash
-TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-TWILIO_AUTH_TOKEN=your-auth-token
-TWILIO_VERIFY_SERVICE_SID=VAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-TWILIO_VERIFY_CHANNEL=sms
-```
-
-`TWILIO_VERIFY_CHANNEL` defaults to `sms`; Twilio Verify also supports channels such as `whatsapp` and `call`. On a Twilio trial account, OTPs can only be sent to phone numbers you have verified in the Twilio Console.
 
 ## Authentication
 
-Phone-number login with OTP — no passwords.
+Sign-in is Google only — no passwords, no SMS.
 
-1. Enter your phone number on `/login`.
-2. A 6-digit OTP is delivered through Twilio Verify.
-3. Enter the code on `/verify`. First-time numbers get an account automatically and are asked for a display name.
-4. The app keeps a 30-minute access token in memory. A 7-day refresh token is set only as an HttpOnly cookie, scoped to `/api/auth`; it never appears in JSON or browser JavaScript storage. On reload the app restores the session using `/refresh` and `/me` before routing. Connection failures show a retry option without discarding the session.
+1. Click **Continue with Google** on `/login`. A first-time Google account gets a Settlo account automatically, named from the Google profile (or the email address if Google has no name).
+2. The app keeps a 30-minute access token in memory. A 7-day refresh token is set only as an HttpOnly cookie, scoped to `/api/auth`; it never appears in JSON or browser JavaScript storage. On reload the app restores the session using `/refresh` and `/me` before routing. Connection failures show a retry option without discarding the session.
 
-Existing sessions stored in `settlo-auth` localStorage are removed on startup; users of the previous version need to sign in once. Refresh tokens in request bodies are no longer accepted. Verification, refresh, and logout require an exact trusted `Origin` header (including API clients). Logout revokes the cookie token and supplied access token before clearing the cookie; a network failure leaves logout available to retry.
+Refresh tokens in request bodies are not accepted. Sign-in, refresh, and logout require an exact trusted `Origin` header (including API clients). Logout revokes the cookie token and supplied access token before clearing the cookie; a network failure leaves logout available to retry.
 
-### Google sign-in
+Setup: in Google Cloud Console, create an **OAuth client ID** of type *Web application*, add the frontend origins (e.g. `http://localhost`, `http://localhost:5173` and the Vercel URL) under **Authorized JavaScript origins**, and set the same client ID as `GOOGLE_CLIENT_ID` (backend) and `VITE_GOOGLE_CLIENT_ID` (frontend). The backend checks Google's signature, the audience and the issuer of each ID token.
 
-Google is a second way into the same account, not a separate account system.
+Security: Google ID tokens are verified server-side, logout blacklists tokens, and tokens are not persisted in browser storage.
 
-- **Existing phone users** sign in with their phone, then use **Settings → Sign-in methods** to link Google. From then on Google opens the same account with all their groups and history. A Google account can be linked to only one Settlo account.
-- **New users** can use Google alone. They get an account with no phone number, named from their Google profile.
+### Phone sign-in (removed)
+
+Settlo used to sign in with SMS codes. Migration `0009` dropped the `otp_codes` table and erased the phone numbers of every account linked to Google. Accounts that never linked Google keep their number only so an admin can confirm the owner before restoring access by hand.
+
+### Restoring access by hand
+
+For someone who cannot reach their old account (never linked Google, or lost their Google account): have them sign in once with the Google account they want to use, which creates an empty Settlo account, and confirm who they are. Then move that Google ID onto their old account in one transaction:
+
+```sql
+BEGIN;
+-- The empty account their Google sign-in just created. Check it has no groups or friends.
+SELECT id, google_sub, email FROM users WHERE email = '<their gmail>';
+DELETE FROM users WHERE id = '<empty account id>';
+UPDATE users SET google_sub = '<google_sub from above>', email = '<their gmail>'
+WHERE id = '<old account id>';
+COMMIT;
+```
 
 ### IDs
 
-Every user picks a unique ID (3-30 letters, numbers, `_` or `.` with at least one letter, case-insensitive, like Instagram). An ID can never be all digits, so the add-friend box can always tell an ID from a phone number. Reserved system names and anything containing `settlo` are refused, and the home page and Settings forms check availability as you type. Signing up does not require one: the home page asks users without an ID to set it (inside the Welcome card for new users, above their groups for existing ones), and anyone can change it in Settings. Friends and group invitations accept an ID or a phone number, so Google-only users without a phone can still be found.
-
-Setup: in Google Cloud Console, create an **OAuth client ID** of type *Web application*, add the frontend origins (e.g. `http://localhost:5173` and the Vercel URL) under **Authorized JavaScript origins**, and set the same client ID as `GOOGLE_CLIENT_ID` (backend) and `VITE_GOOGLE_CLIENT_ID` (frontend). The backend checks Google's signature, the audience and the issuer of each ID token.
-
-Security: OTP is delivered and checked by Twilio Verify, OTP sends are rate-limited, logout blacklists tokens, and tokens are not persisted in browser storage.
+Every user picks a unique ID (3-30 letters, numbers, `_` or `.` with at least one letter, case-insensitive, like Instagram). Reserved system names and anything containing `settlo` are refused, and the home page and Settings forms check availability as you type. Signing up does not require one: the home page asks users without an ID to set it (inside the Welcome card for new users, above their groups for existing ones), and anyone can change it in Settings. Friends and group invitations find people by ID.
 
 ## Settlement Algorithm
 
@@ -141,10 +132,7 @@ This is a heuristic, not an optimum: finding the true minimum number of transact
 
 | Method | Path | Description |
 |---|---|---|
-| POST | /api/auth/send-otp | Send OTP |
-| POST | /api/auth/verify-otp | Verify OTP, issue tokens |
 | POST | /api/auth/google | Sign in with a Google ID token, issue tokens |
-| POST | /api/auth/google/link | Link Google to the signed-in account |
 | POST | /api/auth/set-username | Set display name |
 | GET | /api/auth/handle-available | Check whether an ID is free |
 | POST | /api/auth/set-handle | Set unique ID (409 if taken or reserved) |
@@ -165,7 +153,7 @@ This is a heuristic, not an optimum: finding the true minimum number of transact
 | POST | /api/groups/{id}/settlements/{sid}/pay | Record one payment |
 | POST | /api/groups/{id}/settlements/{sid}/reverse | Undo a recorded payment |
 | GET | /api/groups/{id}/expenses/{eid}/history | Previous versions of an expense |
-| POST/GET | /api/group-invitations | Invite by phone / list my pending invites |
+| POST/GET | /api/group-invitations | Invite by ID / list my pending invites |
 | POST | /api/group-invitations/{id}/accept | Accept group invite |
 | POST | /api/group-invitations/{id}/decline | Decline group invite |
 | POST/GET | /api/friends/requests | Send / list friend requests |

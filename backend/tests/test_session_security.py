@@ -36,19 +36,20 @@ class SessionSecurityTest(unittest.TestCase):
         app.dependency_overrides[get_db] = isolated_db
         self.client = TestClient(app, base_url="https://testserver")
         self.client.headers["Origin"] = settings.FRONTEND_URL
-        self.dev_otp = patch.object(settings, "DEV_OTP_CODE", "000000")
-        self.dev_otp.start()
+        self.google = patch.object(auth, "verify_google_token", return_value={
+            "sub": "google-sub-1", "name": "Ada", "email": "ada@example.com",
+            "email_verified": True,
+        })
+        self.google.start()
 
     def tearDown(self):
-        self.dev_otp.stop()
+        self.google.stop()
         self.client.close()
         self.db.close()
         self.engine.dispose()
 
     def login(self):
-        response = self.client.post("/api/auth/verify-otp", json={
-            "phone_number": "5550000001", "code": "000000",
-        })
+        response = self.client.post("/api/auth/google", json={"credential": "token"})
         self.assertEqual(response.status_code, 200)
         return response
 
@@ -81,7 +82,7 @@ class SessionSecurityTest(unittest.TestCase):
                 if origin:
                     self.client.headers["Origin"] = origin
                 for endpoint, body in (
-                    ("verify-otp", {"phone_number": "5550000001", "code": "000000"}),
+                    ("google", {"credential": "token"}),
                     ("refresh", None), ("logout", None),
                 ):
                     self.assertEqual(self.client.post(f"/api/auth/{endpoint}", json=body).status_code, 403)

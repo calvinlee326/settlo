@@ -31,7 +31,7 @@ def send_friend_request(
     if target is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="No user with that ID or phone number",
+            detail="No user with that ID",
         )
     if target.id == current_user.id:
         raise HTTPException(
@@ -145,7 +145,6 @@ def list_friends(
             id=u.id,
             username=u.username,
             handle=u.handle,
-            phone_number=u.phone_number,
             net_balance=float(friends_svc.friend_balance(db, current_user.id, u.id)),
         )
         for u in users

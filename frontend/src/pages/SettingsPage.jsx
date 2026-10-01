@@ -4,7 +4,6 @@ import api from '../api/axios';
 import useAuthStore from '../store/authStore';
 import Button from '../components/Button';
 import ErrorMessage from '../components/ErrorMessage';
-import GoogleButton, { isGoogleEnabled } from '../components/GoogleButton';
 import HandleInput from '../components/HandleInput';
 import { HANDLE_RULES, isValidHandle, normalizeHandle } from '../lib/handle';
 
@@ -48,18 +47,6 @@ export default function SettingsPage() {
       setError(err.response?.data?.detail || 'Could not save your profile.');
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleLinkGoogle = async (credential) => {
-    setError('');
-    setNotice('');
-    try {
-      const { data } = await api.post('/auth/google/link', { credential });
-      setUser(data);
-      setNotice('Google account linked');
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Could not link Google account.');
     }
   };
 
@@ -112,25 +99,10 @@ export default function SettingsPage() {
           </Button>
         </div>
       </form>
-      {isGoogleEnabled && (
-        <div className="card space-y-3 p-6">
-          <h2 className="text-[13px] font-medium text-muted">Sign-in methods</h2>
-          <p className="text-sm text-ink">
-            Phone: {user?.phone_number || 'Not added'}
-          </p>
-          <p className="text-sm text-ink">
-            Google: {user?.google_linked ? user.email || 'Linked' : 'Not linked'}
-          </p>
-          {!user?.google_linked && (
-            <GoogleButton onCredential={handleLinkGoogle} text="signin_with" />
-          )}
-          {!user?.phone_number && (
-            <p className="text-[13px] text-muted">
-              Used Settlo with your phone before? Log out, sign in with your
-              phone, and link Google here. Your groups and history stay with
-              your phone account.
-            </p>
-          )}
+      {user?.email && (
+        <div className="card space-y-1 p-6">
+          <h2 className="text-[13px] font-medium text-muted">Signed in with Google</h2>
+          <p className="text-sm text-ink">{user.email}</p>
         </div>
       )}
     </div>

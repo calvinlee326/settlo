@@ -34,7 +34,7 @@ def create_invitation(
     if target is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="No user with that ID or phone number",
+            detail="No user with that ID",
         )
     already_member = (
         db.query(Membership)

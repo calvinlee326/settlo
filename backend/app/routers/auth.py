@@ -1,5 +1,4 @@
-from collections import deque
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.exc import IntegrityError
@@ -18,37 +17,22 @@ from app.schemas.user import (
     AccessTokenResponse,
     GoogleAuthRequest,
     HandleAvailability,
-    SendOTPRequest,
-    SendOTPResponse,
     SetHandleRequest,
     SetUsernameRequest,
     TokenResponse,
     UserOut,
-    VerifyOTPRequest,
     normalize_handle,
 )
 from app.services.google_auth import (
     GoogleAuthError,
     GoogleUnavailableError,
-    is_unused_google_account,
     verified_email,
     verify_google_token,
 )
 from app.services.handles import handle_problem
-from app.services.otp import (
-    OTPDeliveryError,
-    OTPInvalidError,
-    OTPLockedError,
-    generate_otp,
-    verify_otp,
-)
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
-# ponytail: in-process counters, so the limit is per worker and resets on deploy.
-# Move to Redis if the backend ever runs more than one instance.
-_otp_ip_attempts: dict[str, deque[datetime]] = {}
-OTP_IP_SWEEP_THRESHOLD = 1024
 REFRESH_COOKIE_NAME = "settlo_refresh"
 REFRESH_COOKIE_PATH = "/api/auth"
 _AUTH_ORIGINS = frozenset(
@@ -60,29 +44,6 @@ _AUTH_ORIGINS = frozenset(
 def _check_origin(request: Request) -> None:
     if request.headers.get("origin") not in _AUTH_ORIGINS:
         raise HTTPException(status_code=403, detail="Untrusted request origin")
-
-
-def _check_otp_ip_limit(request: Request) -> None:
-    ip_address = request.client.host if request.client else "unknown"
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
-    cutoff = now - timedelta(minutes=settings.OTP_SEND_WINDOW_MINUTES)
-
-    if len(_otp_ip_attempts) > OTP_IP_SWEEP_THRESHOLD:
-        for stale in [
-            ip
-            for ip, seen in _otp_ip_attempts.items()
-            if not seen or seen[-1] < cutoff
-        ]:
-            del _otp_ip_attempts[stale]
-
-    attempts = _otp_ip_attempts.setdefault(ip_address, deque())
-    while attempts and attempts[0] < cutoff:
-        attempts.popleft()
-    if len(attempts) >= settings.OTP_IP_SEND_LIMIT:
-        raise OTPLockedError(
-            "Too many verification codes requested. Try again later."
-        )
-    attempts.append(now)
 
 
 def _blacklist(db: Session, token: str) -> None:
@@ -109,7 +70,6 @@ def _issue_session(response: Response, user: User) -> TokenResponse:
         path=REFRESH_COOKIE_PATH,
     )
     return TokenResponse(
-        is_new_user=user.username is None,
         access_token=create_access_token(user.id),
         user=UserOut.model_validate(user),
     )
@@ -126,51 +86,6 @@ def _google_claims(credential: str) -> dict:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc))
 
 
-@router.post("/send-otp", response_model=SendOTPResponse)
-def send_otp(
-    body: SendOTPRequest, request: Request, db: Session = Depends(get_db)
-):
-    try:
-        _check_otp_ip_limit(request)
-        generate_otp(db, body.phone_number)
-    except OTPLockedError as exc:
-        raise HTTPException(status_code=status.HTTP_423_LOCKED, detail=str(exc))
-    except OTPDeliveryError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
-        )
-    return SendOTPResponse(
-        message="OTP sent", expires_in=settings.OTP_EXPIRE_MINUTES * 60
-    )
-
-
-@router.post("/verify-otp", response_model=TokenResponse)
-def verify_otp_endpoint(
-    body: VerifyOTPRequest, request: Request, response: Response,
-    db: Session = Depends(get_db),
-):
-    _check_origin(request)
-    try:
-        verify_otp(db, body.phone_number, body.code)
-    except OTPLockedError as exc:
-        raise HTTPException(status_code=status.HTTP_423_LOCKED, detail=str(exc))
-    except OTPDeliveryError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
-        )
-    except OTPInvalidError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
-
-    user = db.query(User).filter(User.phone_number == body.phone_number).first()
-    if user is None:
-        user = User(phone_number=body.phone_number)
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-
-    return _issue_session(response, user)
-
-
 @router.post("/google", response_model=TokenResponse)
 def google_login(
     body: GoogleAuthRequest, request: Request, response: Response,
@@ -180,39 +95,13 @@ def google_login(
     claims = _google_claims(body.credential)
     user = db.query(User).filter(User.google_sub == claims["sub"]).first()
     if user is None:
-        name = (claims.get("name") or "").strip()[:50]
-        user = User(
-            google_sub=claims["sub"],
-            email=verified_email(claims),
-            username=name or None,
-        )
+        email = verified_email(claims)
+        name = (claims.get("name") or (email or "").split("@")[0]).strip()[:50]
+        user = User(google_sub=claims["sub"], email=email, username=name or None)
         db.add(user)
         db.commit()
         db.refresh(user)
     return _issue_session(response, user)
-
-
-@router.post("/google/link", response_model=UserOut)
-def link_google(
-    body: GoogleAuthRequest,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    claims = _google_claims(body.credential)
-    owner = db.query(User).filter(User.google_sub == claims["sub"]).first()
-    if owner is not None and owner.id != current_user.id:
-        if not is_unused_google_account(db, owner):
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="This Google account is already linked to another Settlo account",
-            )
-        db.delete(owner)
-        db.flush()
-    current_user.google_sub = claims["sub"]
-    current_user.email = verified_email(claims)
-    db.commit()
-    db.refresh(current_user)
-    return UserOut.model_validate(current_user)
 
 
 @router.post("/set-username", response_model=UserOut)

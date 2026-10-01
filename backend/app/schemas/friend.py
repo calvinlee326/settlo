@@ -23,7 +23,6 @@ class FriendOut(BaseModel):
     id: str
     username: str | None
     handle: str | None
-    phone_number: str | None
     net_balance: float
 
 

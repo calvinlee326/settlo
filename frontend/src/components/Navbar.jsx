@@ -108,7 +108,7 @@ export default function Navbar() {
                 onClick={() => setMenuOpen((open) => !open)}
                 className="flex items-center gap-1 text-sm font-medium text-ink-soft transition-colors hover:text-ink"
               >
-                {user.username || user.phone_number}
+                {user.username || user.handle}
                 <svg
                   className={`h-3 w-3 transition-transform ${menuOpen ? 'rotate-180' : ''}`}
                   viewBox="0 0 12 12"

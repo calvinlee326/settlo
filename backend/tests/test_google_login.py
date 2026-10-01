@@ -20,7 +20,6 @@ from sqlalchemy.pool import StaticPool
 
 from app.core.config import settings
 from app.database import Base, get_db
-from app.models.group import Group
 from app.models.user import User
 from app.routers import auth
 from app.services import google_auth
@@ -48,50 +47,29 @@ class GoogleLoginTest(unittest.TestCase):
         app.dependency_overrides[get_db] = isolated_db
         self.client = TestClient(app, base_url="https://testserver")
         self.client.headers["Origin"] = settings.FRONTEND_URL
-        self.dev_otp = patch.object(settings, "DEV_OTP_CODE", "000000")
-        self.dev_otp.start()
 
     def tearDown(self):
-        self.dev_otp.stop()
         self.client.close()
         self.db.close()
         self.engine.dispose()
-
-    def phone_login(self, phone="5550000001"):
-        response = self.client.post("/api/auth/verify-otp", json={
-            "phone_number": phone, "code": "000000",
-        })
-        self.assertEqual(response.status_code, 200)
-        return response.json()
 
     def google_login(self, claims):
         with patch.object(auth, "verify_google_token", return_value=claims):
             return self.client.post("/api/auth/google", json={"credential": "token"})
 
-    def link(self, access_token, claims):
-        with patch.object(auth, "verify_google_token", return_value=claims):
-            return self.client.post(
-                "/api/auth/google/link", json={"credential": "token"},
-                headers={"Authorization": f"Bearer {access_token}"},
-            )
-
-    def test_linked_phone_user_signs_in_with_google_to_same_account(self):
-        phone_user = self.phone_login()
-        self.assertEqual(self.link(phone_user["access_token"], google_claims()).status_code, 200)
-
-        response = self.google_login(google_claims())
-
-        self.assertEqual(response.json()["user"]["id"], phone_user["user"]["id"])
-
-    def test_new_google_account_gets_phoneless_user_named_from_google(self):
+    def test_new_google_account_is_named_from_google(self):
         response = self.google_login(google_claims())
 
         body = response.json()
         self.assertEqual(
-            (body["is_new_user"], body["user"]["phone_number"], body["user"]["username"],
-             body["user"]["google_linked"], self.db.query(User).count()),
-            (False, None, "Ada Lovelace", True, 1),
+            (body["user"]["username"], body["user"]["google_linked"], self.db.query(User).count()),
+            ("Ada Lovelace", True, 1),
         )
+
+    def test_new_google_account_without_a_name_is_named_from_email(self):
+        response = self.google_login(google_claims(name=None))
+
+        self.assertEqual(response.json()["user"]["username"], "ada")
 
     def test_google_login_sets_refresh_cookie(self):
         self.google_login(google_claims())
@@ -103,36 +81,9 @@ class GoogleLoginTest(unittest.TestCase):
 
         self.assertEqual(self.google_login(google_claims()).status_code, 403)
 
-    def test_cannot_link_google_account_of_another_phone_user(self):
-        first = self.phone_login("5550000001")
-        self.link(first["access_token"], google_claims())
-        second = self.phone_login("5550000002")
 
-        response = self.link(second["access_token"], google_claims())
 
-        self.assertEqual(response.status_code, 409)
 
-    def test_phone_user_takes_google_from_account_google_login_left_empty(self):
-        self.google_login(google_claims())
-        phone_user = self.phone_login()
-        self.link(phone_user["access_token"], google_claims())
-
-        response = self.google_login(google_claims())
-
-        self.assertEqual(
-            (response.json()["user"]["id"], self.db.query(User).count()),
-            (phone_user["user"]["id"], 1),
-        )
-
-    def test_cannot_take_google_from_google_account_with_activity(self):
-        google_user = self.google_login(google_claims()).json()["user"]
-        self.db.add(Group(name="Trip", created_by=google_user["id"]))
-        self.db.commit()
-        phone_user = self.phone_login()
-
-        response = self.link(phone_user["access_token"], google_claims())
-
-        self.assertEqual(response.status_code, 409)
 
 
 class VerifyGoogleTokenTest(unittest.TestCase):

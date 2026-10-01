@@ -28,16 +28,19 @@ export default function PrivacyPage() {
         <Section title="What we collect">
           <ul className="list-disc space-y-1 pl-5">
             <li>
-              <strong>Phone number</strong>, if you sign in with your phone. We use
-              it to sign you in and so friends can add you.
+              <strong>Google account details</strong>: your Google account ID,
+              email address and name. We use them to sign you in and to set your
+              display name.
             </li>
             <li>
-              <strong>Google account details</strong>, if you sign in with Google:
-              your Google account ID, email address and name. We use them to sign
-              you in and to set your display name.
+              <strong>Your display name and ID.</strong> Your ID is how friends
+              find and add you.
             </li>
             <li>
-              <strong>Your display name.</strong>
+              <strong>Phone number</strong>, only if you used Settlo&apos;s former
+              phone sign-in and never linked a Google account. We keep it solely
+              to confirm who you are if you ask us to restore your access. We have
+              deleted the phone numbers of all accounts linked to Google.
             </li>
             <li>
               <strong>What you enter in Settlo</strong>: groups, expenses, payments,
@@ -57,15 +60,15 @@ export default function PrivacyPage() {
         <Section title="Who can see it">
           <p>
             Members of your groups see your display name and the expenses and
-            payments in those groups. Your friends see your display name and phone
-            number. Settlo never moves money; payments you record are only notes
+            payments in those groups. Your friends see your display name and ID,
+            and anyone signed in to Settlo can look you up by your ID. Settlo never
+            moves money; payments you record are only notes
             that a payment happened elsewhere.
           </p>
         </Section>
 
         <Section title="Services we rely on">
           <ul className="list-disc space-y-1 pl-5">
-            <li>Twilio, to send sign-in codes by SMS (receives your phone number)</li>
             <li>Google, for Google sign-in</li>
             <li>Railway, which hosts our server and database</li>
             <li>Vercel, which hosts this website</li>
@@ -86,7 +89,7 @@ export default function PrivacyPage() {
             <a href={`mailto:${CONTACT_EMAIL}`} className="font-medium text-ink underline">
               {CONTACT_EMAIL}
             </a>{' '}
-            from the email address or phone number on your account, and we will
+            from the email address on your account, and we will
             delete your account and personal information.
           </p>
         </Section>
