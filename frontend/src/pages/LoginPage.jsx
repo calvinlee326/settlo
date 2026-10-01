@@ -4,6 +4,7 @@ import api from '../api/axios';
 import useAuthStore, { useIsAuthenticated } from '../store/authStore';
 import ErrorMessage from '../components/ErrorMessage';
 import GoogleButton, { isGoogleEnabled } from '../components/GoogleButton';
+import { USER_GUIDE_URL } from '../lib/links';
 
 export default function LoginPage() {
   const [error, setError] = useState('');
@@ -49,7 +50,16 @@ export default function LoginPage() {
         <p className="mt-4 text-center text-[13px] text-muted">
           New here? An account is created automatically on first login.
         </p>
-        <p className="mt-6 text-center text-[13px]">
+        <p className="mt-6 text-center text-[13px] text-muted">
+          <a
+            href={USER_GUIDE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-ink"
+          >
+            How to use
+          </a>
+          {' · '}
           <Link to="/privacy" className="text-muted underline hover:text-ink">
             Privacy Policy
           </Link>

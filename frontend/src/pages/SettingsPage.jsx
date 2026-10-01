@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import useAuthStore from '../store/authStore';
 import Button from '../components/Button';
 import ErrorMessage from '../components/ErrorMessage';
 import HandleInput from '../components/HandleInput';
 import { HANDLE_RULES, isValidHandle, normalizeHandle } from '../lib/handle';
+import { USER_GUIDE_URL } from '../lib/links';
 
 export default function SettingsPage() {
   const navigate = useNavigate();
@@ -105,6 +106,20 @@ export default function SettingsPage() {
           <p className="text-sm text-ink">{user.email}</p>
         </div>
       )}
+      <p className="pt-2 text-center text-[13px] text-muted">
+        <a
+          href={USER_GUIDE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-ink"
+        >
+          How to use
+        </a>
+        {' · '}
+        <Link to="/privacy" className="underline hover:text-ink">
+          Privacy Policy
+        </Link>
+      </p>
     </div>
   );
 }
