@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import useAuthStore, { useIsAuthenticated } from '../store/authStore';
 import Button from '../components/Button';
@@ -104,6 +104,11 @@ export default function LoginPage() {
             </p>
           </div>
         )}
+        <p className="mt-6 text-center text-[13px]">
+          <Link to="/privacy" className="text-muted underline hover:text-ink">
+            Privacy Policy
+          </Link>
+        </p>
       </div>
     </div>
   );

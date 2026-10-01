@@ -13,6 +13,7 @@ import FriendsPage from './pages/FriendsPage';
 import NewDirectExpensePage from './pages/NewDirectExpensePage';
 import SettingsPage from './pages/SettingsPage';
 import PaymentHistoryPage from './pages/PaymentHistoryPage';
+import PrivacyPage from './pages/PrivacyPage';
 
 function Layout({ children }) {
   return (
@@ -33,6 +34,7 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/verify" element={<VerifyPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
       <Route
         path="/"
         element={
