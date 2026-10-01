@@ -99,6 +99,13 @@ export default function SettingsPage() {
           {!user?.google_linked && (
             <GoogleButton onCredential={handleLinkGoogle} text="signin_with" />
           )}
+          {!user?.phone_number && (
+            <p className="text-[13px] text-muted">
+              Used Settlo with your phone before? Log out, sign in with your
+              phone, and link Google here. Your groups and history stay with
+              your phone account.
+            </p>
+          )}
         </div>
       )}
     </div>

@@ -26,6 +26,7 @@ from app.schemas.user import (
 from app.services.google_auth import (
     GoogleAuthError,
     GoogleUnavailableError,
+    is_unused_google_account,
     verified_email,
     verify_google_token,
 )
@@ -195,10 +196,13 @@ def link_google(
     claims = _google_claims(body.credential)
     owner = db.query(User).filter(User.google_sub == claims["sub"]).first()
     if owner is not None and owner.id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="This Google account is already linked to another Settlo account",
-        )
+        if not is_unused_google_account(db, owner):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This Google account is already linked to another Settlo account",
+            )
+        db.delete(owner)
+        db.flush()
     current_user.google_sub = claims["sub"]
     current_user.email = verified_email(claims)
     db.commit()
