@@ -20,6 +20,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.core.config import settings
 from app.database import Base, get_db
+from app.models.group import Group
 from app.models.user import User
 from app.routers import auth
 from app.services import google_auth
@@ -102,8 +103,31 @@ class GoogleLoginTest(unittest.TestCase):
 
         self.assertEqual(self.google_login(google_claims()).status_code, 403)
 
-    def test_cannot_link_google_account_owned_by_another_user(self):
+    def test_cannot_link_google_account_of_another_phone_user(self):
+        first = self.phone_login("5550000001")
+        self.link(first["access_token"], google_claims())
+        second = self.phone_login("5550000002")
+
+        response = self.link(second["access_token"], google_claims())
+
+        self.assertEqual(response.status_code, 409)
+
+    def test_phone_user_takes_google_from_account_google_login_left_empty(self):
         self.google_login(google_claims())
+        phone_user = self.phone_login()
+        self.link(phone_user["access_token"], google_claims())
+
+        response = self.google_login(google_claims())
+
+        self.assertEqual(
+            (response.json()["user"]["id"], self.db.query(User).count()),
+            (phone_user["user"]["id"], 1),
+        )
+
+    def test_cannot_take_google_from_google_account_with_activity(self):
+        google_user = self.google_login(google_claims()).json()["user"]
+        self.db.add(Group(name="Trip", created_by=google_user["id"]))
+        self.db.commit()
         phone_user = self.phone_login()
 
         response = self.link(phone_user["access_token"], google_claims())
