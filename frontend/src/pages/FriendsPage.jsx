@@ -4,12 +4,14 @@ import api from '../api/axios';
 import Button from '../components/Button';
 import ErrorMessage from '../components/ErrorMessage';
 import { SkeletonList } from '../components/LoadingSpinner';
-import { formatPhone } from '../lib/phone';
+import { parseContact } from '../lib/handle';
+import useAuthStore from '../store/authStore';
 
 export default function FriendsPage() {
   const [friends, setFriends] = useState([]);
   const [requests, setRequests] = useState([]);
-  const [phone, setPhone] = useState('');
+  const [contact, setContact] = useState('');
+  const myHandle = useAuthStore((s) => s.user?.handle);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(true);
@@ -32,18 +34,15 @@ export default function FriendsPage() {
   const addFriend = async () => {
     setError('');
     setNotice('');
-    if (!phone.trim()) return;
-    let digits = phone.replace(/\D/g, '');
-    if (digits.length === 11 && digits.startsWith('1')) {
-      digits = digits.slice(1);
-    }
-    if (digits.length !== 10) {
-      setError('Enter a valid 10-digit US phone number');
+    if (!contact.trim()) return;
+    const lookup = parseContact(contact);
+    if (!lookup) {
+      setError("Enter your friend's ID or a 10-digit US phone number");
       return;
     }
     try {
-      await api.post('/friends/requests', { phone_number: `+1${digits}` });
-      setPhone('');
+      await api.post('/friends/requests', lookup);
+      setContact('');
       setNotice('Request sent');
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to send request');
@@ -93,22 +92,29 @@ export default function FriendsPage() {
         <p className="text-[13px] font-medium text-muted">Add a friend</p>
         <div className="flex gap-2">
           <input
-            type="tel"
-            inputMode="numeric"
-            placeholder="909-555-0101"
-            value={phone}
-            onChange={(e) => setPhone(formatPhone(e.target.value))}
+            type="text"
+            autoCapitalize="none"
+            autoCorrect="off"
+            placeholder="ID or phone number"
+            value={contact}
+            onChange={(e) => setContact(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addFriend()}
             className="min-w-0 flex-1 rounded-xl bg-sunk px-3 py-2 text-[14px] text-ink placeholder-muted outline-none"
           />
           <button
             onClick={addFriend}
-            disabled={!phone.trim()}
+            disabled={!contact.trim()}
             className="shrink-0 rounded-xl bg-ink px-4 py-2 text-[14px] font-medium text-white transition-opacity hover:opacity-80 disabled:opacity-40"
           >
             Add
           </button>
         </div>
+        {myHandle && (
+          <p className="text-[13px] text-muted">
+            Your ID is <span className="font-medium text-ink">{myHandle}</span>.
+            Share it so friends can add you.
+          </p>
+        )}
       </div>
 
       {requests.length > 0 && (
@@ -154,6 +160,7 @@ export default function FriendsPage() {
                 <p className="text-[15px] font-medium text-ink">
                   {f.username || f.phone_number}
                 </p>
+                {f.handle && <p className="text-[13px] text-muted">ID: {f.handle}</p>}
                 <p
                   className={`text-sm tabular-nums ${
                     f.net_balance > 0

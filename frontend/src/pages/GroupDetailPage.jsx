@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { QRCodeSVG } from 'qrcode.react';
 import api from '../api/axios';
 import useAuthStore from '../store/authStore';
 import Avatar from '../components/Avatar';
@@ -8,7 +7,7 @@ import Button from '../components/Button';
 import ErrorMessage from '../components/ErrorMessage';
 import ExpenseItem from '../components/ExpenseItem';
 import { SkeletonList } from '../components/LoadingSpinner';
-import { formatPhone } from '../lib/phone';
+import { parseContact } from '../lib/handle';
 
 // Cap the entry stagger: past this index every card animates together, so a
 // long list finishes in ~550ms instead of growing 50ms per row.
@@ -23,8 +22,9 @@ export default function GroupDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [inviteLink, setInviteLink] = useState('');
+  const [linkCopied, setLinkCopied] = useState(false);
   const [friends, setFriends] = useState([]);
-  const [invitePhone, setInvitePhone] = useState('');
+  const [inviteContact, setInviteContact] = useState('');
   const [inviteFriendId, setInviteFriendId] = useState('');
   const [inviteNotice, setInviteNotice] = useState('');
   // ponytail: one busy flag for the whole page. Split per-action if two
@@ -41,22 +41,18 @@ export default function GroupDetailPage() {
       .catch(() => {});
   }, []);
 
-  const sendPhoneInvite = async () => {
+  const sendInvite = async () => {
     setError('');
     setInviteNotice('');
-    let digits = invitePhone.replace(/\D/g, '');
-    if (digits.length === 11 && digits.startsWith('1')) digits = digits.slice(1);
-    if (digits.length !== 10) {
-      setError('Enter a valid 10-digit US phone number');
+    const lookup = parseContact(inviteContact);
+    if (!lookup) {
+      setError('Enter an ID or a 10-digit US phone number');
       return;
     }
     setBusy(true);
     try {
-      await api.post('/group-invitations', {
-        group_id: id,
-        phone_number: `+1${digits}`,
-      });
-      setInvitePhone('');
+      await api.post('/group-invitations', { group_id: id, ...lookup });
+      setInviteContact('');
       setInviteNotice('Invite sent');
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to send invite');
@@ -126,6 +122,15 @@ export default function GroupDetailPage() {
       setError(err.response?.data?.detail || 'Failed to get invite link');
     } finally {
       setBusy(false);
+    }
+  };
+
+  const copyInviteLink = async () => {
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      setLinkCopied(true);
+    } catch {
+      setError('Could not copy. Select the link and copy it manually.');
     }
   };
 
@@ -384,27 +389,40 @@ export default function GroupDetailPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
           <div className="card w-full max-w-sm space-y-4 p-6">
             <h2 className="text-[17px] font-semibold text-ink">Invite to group</h2>
-            <div className="flex flex-col items-center gap-3">
-              <div className="rounded-2xl bg-white p-3">
-                <QRCodeSVG value={inviteLink} size={160} />
-              </div>
-              <p className="text-[13px] text-muted">Scan to join</p>
-            </div>
-            <div className="space-y-2 border-t border-rule pt-3">
-              <label htmlFor="invite-phone" className="block text-[13px] font-medium text-muted">Invite by phone</label>
+            <div className="space-y-2">
+              <label htmlFor="invite-link" className="block text-[13px] font-medium text-muted">Share invite link</label>
               <div className="flex gap-2">
                 <input
-                  id="invite-phone"
-                  type="tel"
-                  inputMode="numeric"
-                  placeholder="909-555-0101"
-                  value={invitePhone}
-                  onChange={(e) => setInvitePhone(formatPhone(e.target.value))}
+                  id="invite-link"
+                  readOnly
+                  value={inviteLink}
+                  onFocus={(e) => e.target.select()}
+                  className="min-w-0 flex-1 rounded-xl bg-sunk px-3 py-2 text-[13px] text-ink outline-none"
+                />
+                <button
+                  onClick={copyInviteLink}
+                  className="shrink-0 rounded-xl bg-ink px-4 py-2 text-[13px] font-medium text-white transition-opacity hover:opacity-80"
+                >
+                  {linkCopied ? 'Copied' : 'Copy'}
+                </button>
+              </div>
+            </div>
+            <div className="space-y-2 border-t border-rule pt-3">
+              <label htmlFor="invite-contact" className="block text-[13px] font-medium text-muted">Invite by ID or phone</label>
+              <div className="flex gap-2">
+                <input
+                  id="invite-contact"
+                  type="text"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  placeholder="ID or phone number"
+                  value={inviteContact}
+                  onChange={(e) => setInviteContact(e.target.value)}
                   className="min-w-0 flex-1 rounded-xl bg-sunk px-3 py-2 text-[13px] text-ink placeholder-muted outline-none"
                 />
                 <button
-                  onClick={sendPhoneInvite}
-                  disabled={busy || !invitePhone.trim()}
+                  onClick={sendInvite}
+                  disabled={busy || !inviteContact.trim()}
                   className="shrink-0 rounded-xl bg-ink px-4 py-2 text-[13px] font-medium text-white transition-opacity hover:opacity-80 disabled:opacity-40"
                 >
                   {busy ? 'Sending…' : 'Invite'}
@@ -452,7 +470,7 @@ export default function GroupDetailPage() {
               );
             })()}
             <button
-              onClick={() => { setInviteLink(''); setInviteNotice(''); }}
+              onClick={() => { setInviteLink(''); setInviteNotice(''); setLinkCopied(false); }}
               className="w-full rounded-xl bg-sunk py-2 text-[14px] font-medium text-ink-soft transition-opacity hover:opacity-80"
             >
               Close

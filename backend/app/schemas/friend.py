@@ -5,10 +5,11 @@ from pydantic import BaseModel, Field
 
 from app.models.expense import SplitType
 from app.schemas.expense import SplitInput
+from app.schemas.user import UserLookup
 
 
-class FriendRequestCreate(BaseModel):
-    phone_number: str = Field(min_length=3, max_length=20)
+class FriendRequestCreate(UserLookup):
+    pass
 
 
 class FriendRequestOut(BaseModel):
@@ -21,6 +22,7 @@ class FriendRequestOut(BaseModel):
 class FriendOut(BaseModel):
     id: str
     username: str | None
+    handle: str | None
     phone_number: str | None
     net_balance: float
 

@@ -2,6 +2,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.user import UserLookup
+
 class GroupCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     description: str | None = Field(default=None, max_length=255)
@@ -52,9 +54,8 @@ class InvitePreview(BaseModel):
     is_member: bool
 
 
-class GroupInviteCreate(BaseModel):
+class GroupInviteCreate(UserLookup):
     group_id: str
-    phone_number: str = Field(min_length=3, max_length=20)
 
 
 class GroupInvitationOut(BaseModel):
