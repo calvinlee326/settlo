@@ -6,7 +6,7 @@ import Button from '../components/Button';
 import ErrorMessage from '../components/ErrorMessage';
 import HandleInput from '../components/HandleInput';
 import { HANDLE_RULES, isValidHandle, normalizeHandle } from '../lib/handle';
-import { USER_GUIDE_URL } from '../lib/links';
+import { SUPPORT_URL, USER_GUIDE_URL } from '../lib/links';
 
 export default function SettingsPage() {
   const navigate = useNavigate();
@@ -119,6 +119,15 @@ export default function SettingsPage() {
         <Link to="/privacy" className="underline hover:text-ink">
           Privacy Policy
         </Link>
+        {' · '}
+        <a
+          href={SUPPORT_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-ink"
+        >
+          Support
+        </a>
       </p>
     </div>
   );

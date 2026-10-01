@@ -6,6 +6,8 @@ Live: [settlo-sooty.vercel.app](https://settlo-sooty.vercel.app)
 
 User guide: [How to use Settlo](https://drive.google.com/file/d/1BXuILHMtLOUc_Va8OepIizgRT80EmiHY/view?usp=sharing)
 
+Support: [ko-fi.com/chunchenglee](https://ko-fi.com/chunchenglee)
+
 ## Features
 
 - **Google sign-in & IDs** — sign in with Google; each user picks a unique, case-insensitive ID that friends use to find them.
