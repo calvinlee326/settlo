@@ -4,7 +4,7 @@ import api from '../api/axios';
 import Button from '../components/Button';
 import ErrorMessage from '../components/ErrorMessage';
 import { SkeletonList } from '../components/LoadingSpinner';
-import { parseContact } from '../lib/handle';
+import { isValidHandle, normalizeHandle } from '../lib/handle';
 import useAuthStore from '../store/authStore';
 
 export default function FriendsPage() {
@@ -35,13 +35,13 @@ export default function FriendsPage() {
     setError('');
     setNotice('');
     if (!contact.trim()) return;
-    const lookup = parseContact(contact);
-    if (!lookup) {
-      setError("Enter your friend's ID or a 10-digit US phone number");
+    const handle = normalizeHandle(contact);
+    if (!isValidHandle(handle)) {
+      setError("Enter your friend's ID");
       return;
     }
     try {
-      await api.post('/friends/requests', lookup);
+      await api.post('/friends/requests', { handle });
       setContact('');
       setNotice('Request sent');
     } catch (err) {
@@ -95,7 +95,7 @@ export default function FriendsPage() {
             type="text"
             autoCapitalize="none"
             autoCorrect="off"
-            placeholder="ID or phone number"
+            placeholder="Friend's ID"
             value={contact}
             onChange={(e) => setContact(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addFriend()}
@@ -158,7 +158,7 @@ export default function FriendsPage() {
             >
               <div>
                 <p className="text-[15px] font-medium text-ink">
-                  {f.username || f.phone_number}
+                  {f.username || f.handle}
                 </p>
                 {f.handle && <p className="text-[13px] text-muted">ID: {f.handle}</p>}
                 <p

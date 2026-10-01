@@ -7,7 +7,7 @@ import Button from '../components/Button';
 import ErrorMessage from '../components/ErrorMessage';
 import ExpenseItem from '../components/ExpenseItem';
 import { SkeletonList } from '../components/LoadingSpinner';
-import { parseContact } from '../lib/handle';
+import { isValidHandle, normalizeHandle } from '../lib/handle';
 
 // Cap the entry stagger: past this index every card animates together, so a
 // long list finishes in ~550ms instead of growing 50ms per row.
@@ -44,14 +44,14 @@ export default function GroupDetailPage() {
   const sendInvite = async () => {
     setError('');
     setInviteNotice('');
-    const lookup = parseContact(inviteContact);
-    if (!lookup) {
-      setError('Enter an ID or a 10-digit US phone number');
+    const handle = normalizeHandle(inviteContact);
+    if (!isValidHandle(handle)) {
+      setError("Enter the person's ID");
       return;
     }
     setBusy(true);
     try {
-      await api.post('/group-invitations', { group_id: id, ...lookup });
+      await api.post('/group-invitations', { group_id: id, handle });
       setInviteContact('');
       setInviteNotice('Invite sent');
     } catch (err) {
@@ -408,14 +408,14 @@ export default function GroupDetailPage() {
               </div>
             </div>
             <div className="space-y-2 border-t border-rule pt-3">
-              <label htmlFor="invite-contact" className="block text-[13px] font-medium text-muted">Invite by ID or phone</label>
+              <label htmlFor="invite-contact" className="block text-[13px] font-medium text-muted">Invite by ID</label>
               <div className="flex gap-2">
                 <input
                   id="invite-contact"
                   type="text"
                   autoCapitalize="none"
                   autoCorrect="off"
-                  placeholder="ID or phone number"
+                  placeholder="Their ID"
                   value={inviteContact}
                   onChange={(e) => setInviteContact(e.target.value)}
                   className="min-w-0 flex-1 rounded-xl bg-sunk px-3 py-2 text-[13px] text-ink placeholder-muted outline-none"
@@ -453,7 +453,7 @@ export default function GroupDetailPage() {
                         <option value="">Select a friend</option>
                         {addable.map((f) => (
                           <option key={f.id} value={f.id} className="bg-zinc-900">
-                            {f.username || f.phone_number}
+                            {f.username || f.handle}
                           </option>
                         ))}
                       </select>

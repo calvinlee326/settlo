@@ -72,8 +72,8 @@ class GroupInvitationApiTest(unittest.TestCase):
         Base.metadata.create_all(bind=self.engine)
         self.Session = sessionmaker(bind=self.engine, autocommit=False, autoflush=False)
         self.db = self.Session()
-        self.owner = User(phone_number="+15550000001", username="Owner")
-        self.invitee = User(phone_number="+15550000002", username="Invitee")
+        self.owner = User(phone_number="+15550000001", username="Owner", handle="owner")
+        self.invitee = User(phone_number="+15550000002", username="Invitee", handle="invitee")
         self.db.add_all([self.owner, self.invitee])
         self.db.flush()
         self.group = Group(name="Trip", created_by=self.owner.id, invite_token="ABCDEF")
@@ -103,7 +103,7 @@ class GroupInvitationApiTest(unittest.TestCase):
     def test_invite_by_phone_and_accept(self):
         res = self.client.post(
             "/api/group-invitations",
-            json={"group_id": self.group.id, "phone_number": self.invitee.phone_number},
+            json={"group_id": self.group.id, "handle": self.invitee.handle},
             headers=self._auth(self.owner),
         )
         self.assertEqual(res.status_code, 201)
@@ -128,7 +128,7 @@ class GroupInvitationApiTest(unittest.TestCase):
     def test_invite_unknown_phone_404(self):
         res = self.client.post(
             "/api/group-invitations",
-            json={"group_id": self.group.id, "phone_number": "+15559999999"},
+            json={"group_id": self.group.id, "handle": "nobody"},
             headers=self._auth(self.owner),
         )
         self.assertEqual(res.status_code, 404)
@@ -136,7 +136,7 @@ class GroupInvitationApiTest(unittest.TestCase):
     def test_non_member_cannot_invite(self):
         res = self.client.post(
             "/api/group-invitations",
-            json={"group_id": self.group.id, "phone_number": self.invitee.phone_number},
+            json={"group_id": self.group.id, "handle": self.invitee.handle},
             headers=self._auth(self.invitee),
         )
         self.assertEqual(res.status_code, 403)
@@ -144,7 +144,7 @@ class GroupInvitationApiTest(unittest.TestCase):
     def test_decline_deletes(self):
         self.client.post(
             "/api/group-invitations",
-            json={"group_id": self.group.id, "phone_number": self.invitee.phone_number},
+            json={"group_id": self.group.id, "handle": self.invitee.handle},
             headers=self._auth(self.owner),
         )
         with self.Session() as s:
@@ -160,7 +160,7 @@ class GroupInvitationApiTest(unittest.TestCase):
     def test_invite_self_rejected(self):
         res = self.client.post(
             "/api/group-invitations",
-            json={"group_id": self.group.id, "phone_number": self.owner.phone_number},
+            json={"group_id": self.group.id, "handle": self.owner.handle},
             headers=self._auth(self.owner),
         )
         self.assertEqual(res.status_code, 400)
@@ -173,7 +173,7 @@ class GroupInvitationApiTest(unittest.TestCase):
             s.commit()
         res = self.client.post(
             "/api/group-invitations",
-            json={"group_id": self.group.id, "phone_number": self.invitee.phone_number},
+            json={"group_id": self.group.id, "handle": self.invitee.handle},
             headers=self._auth(self.owner),
         )
         self.assertEqual(res.status_code, 400)

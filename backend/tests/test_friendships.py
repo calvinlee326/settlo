@@ -38,8 +38,8 @@ class FriendshipModelTest(unittest.TestCase):
         self.engine.dispose()
 
     def _users(self):
-        a = User(phone_number="+15550000001", username="A")
-        b = User(phone_number="+15550000002", username="B")
+        a = User(phone_number="+15550000001", username="A", handle="alice")
+        b = User(phone_number="+15550000002", username="B", handle="bob")
         self.db.add_all([a, b])
         self.db.commit()
         return a, b
@@ -70,8 +70,8 @@ class FriendServiceTest(unittest.TestCase):
         )
         Base.metadata.create_all(bind=self.engine)
         self.db = sessionmaker(bind=self.engine, autocommit=False, autoflush=False)()
-        self.a = User(phone_number="+15550000001", username="A")
-        self.b = User(phone_number="+15550000002", username="B")
+        self.a = User(phone_number="+15550000001", username="A", handle="alice")
+        self.b = User(phone_number="+15550000002", username="B", handle="bob")
         self.db.add_all([self.a, self.b])
         self.db.commit()
 
@@ -113,8 +113,8 @@ class FriendRequestApiTest(unittest.TestCase):
             bind=self.engine, autocommit=False, autoflush=False
         )
         self.db = self.Session()
-        self.a = User(phone_number="+15550000001", username="A")
-        self.b = User(phone_number="+15550000002", username="B")
+        self.a = User(phone_number="+15550000001", username="A", handle="alice")
+        self.b = User(phone_number="+15550000002", username="B", handle="bob")
         self.db.add_all([self.a, self.b])
         self.db.commit()
 
@@ -139,7 +139,7 @@ class FriendRequestApiTest(unittest.TestCase):
     def test_send_request_creates_pending(self):
         res = self.client.post(
             "/api/friends/requests",
-            json={"phone_number": self.b.phone_number},
+            json={"handle": self.b.handle},
             headers=self._auth(self.a),
         )
         self.assertEqual(res.status_code, 201)
@@ -150,7 +150,7 @@ class FriendRequestApiTest(unittest.TestCase):
     def test_cannot_friend_self(self):
         res = self.client.post(
             "/api/friends/requests",
-            json={"phone_number": self.a.phone_number},
+            json={"handle": self.a.handle},
             headers=self._auth(self.a),
         )
         self.assertEqual(res.status_code, 400)
@@ -158,12 +158,12 @@ class FriendRequestApiTest(unittest.TestCase):
     def test_duplicate_request_rejected(self):
         self.client.post(
             "/api/friends/requests",
-            json={"phone_number": self.b.phone_number},
+            json={"handle": self.b.handle},
             headers=self._auth(self.a),
         )
         res = self.client.post(
             "/api/friends/requests",
-            json={"phone_number": self.b.phone_number},
+            json={"handle": self.b.handle},
             headers=self._auth(self.a),
         )
         self.assertEqual(res.status_code, 400)
@@ -171,7 +171,7 @@ class FriendRequestApiTest(unittest.TestCase):
     def test_unknown_phone_404(self):
         res = self.client.post(
             "/api/friends/requests",
-            json={"phone_number": "+15559999999"},
+            json={"handle": "nobody"},
             headers=self._auth(self.a),
         )
         self.assertEqual(res.status_code, 404)
@@ -179,7 +179,7 @@ class FriendRequestApiTest(unittest.TestCase):
     def test_incoming_requests_and_accept(self):
         self.client.post(
             "/api/friends/requests",
-            json={"phone_number": self.b.phone_number},
+            json={"handle": self.b.handle},
             headers=self._auth(self.a),
         )
         incoming = self.client.get(
@@ -198,7 +198,7 @@ class FriendRequestApiTest(unittest.TestCase):
     def test_non_addressee_cannot_accept_or_decline(self):
         res = self.client.post(
             "/api/friends/requests",
-            json={"phone_number": self.b.phone_number},
+            json={"handle": self.b.handle},
             headers=self._auth(self.a),
         )
         self.assertEqual(res.status_code, 201)
@@ -215,7 +215,7 @@ class FriendRequestApiTest(unittest.TestCase):
     def test_decline_deletes_request(self):
         res = self.client.post(
             "/api/friends/requests",
-            json={"phone_number": self.b.phone_number},
+            json={"handle": self.b.handle},
             headers=self._auth(self.a),
         )
         fid = res.json()["id"]
@@ -238,8 +238,8 @@ class FriendListApiTest(unittest.TestCase):
             bind=self.engine, autocommit=False, autoflush=False
         )
         self.db = self.Session()
-        self.a = User(phone_number="+15550000001", username="A")
-        self.b = User(phone_number="+15550000002", username="B")
+        self.a = User(phone_number="+15550000001", username="A", handle="alice")
+        self.b = User(phone_number="+15550000002", username="B", handle="bob")
         self.db.add_all([self.a, self.b])
         self.db.flush()
         self.db.add(

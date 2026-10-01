@@ -2,7 +2,6 @@ import os
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 os.environ.setdefault("SECRET_KEY", "test-secret-key-for-user-handles-123")
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -12,7 +11,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.core.config import settings
 from app.core.security import create_access_token
 from app.database import Base, get_db
 from app.main import app
@@ -130,8 +128,8 @@ class HandleApiTest(unittest.TestCase):
 
         self.assertEqual(res.status_code, 404)
 
-    def test_friend_request_needs_exactly_one_of_handle_or_phone(self):
-        for body in ({}, {"handle": "ada", "phone_number": "+15550000001"}):
+    def test_friend_request_needs_an_id(self):
+        for body in ({}, {"phone_number": "+15550000001"}):
             with self.subTest(body=body):
                 res = self.client.post(
                     "/api/friends/requests", json=body, headers=self._auth(self.bob)
@@ -155,15 +153,6 @@ class HandleApiTest(unittest.TestCase):
             (res.status_code, self.db.query(GroupInvitation).one().invited_user_id),
             (201, self.ada.id),
         )
-
-    def test_named_user_without_handle_skips_signup_step(self):
-        self.client.headers["Origin"] = settings.FRONTEND_URL
-        with patch.object(settings, "DEV_OTP_CODE", "000000"):
-            res = self.client.post(
-                "/api/auth/verify-otp", json={"phone_number": "5550000002", "code": "000000"}
-            )
-
-        self.assertFalse(res.json()["is_new_user"])
 
 
 if __name__ == "__main__":

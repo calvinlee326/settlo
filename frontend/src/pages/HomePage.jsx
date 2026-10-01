@@ -76,7 +76,7 @@ export default function HomePage() {
       .filter((f) => Math.abs(f.net_balance || 0) >= 0.005)
       .map((f) => ({
         key: `friend-${f.id}`,
-        name: f.username || f.phone_number,
+        name: f.username || f.handle,
         balance: f.net_balance,
         to: '/friends',
       }));
@@ -238,7 +238,7 @@ export default function HomePage() {
               )}
             </li>
             <li>
-              <span className="font-semibold text-ink">2.</span> Create a group and invite people by ID or phone.
+              <span className="font-semibold text-ink">2.</span> Create a group and invite people by ID or invite link.
             </li>
             <li>
               <span className="font-semibold text-ink">3.</span> Add expenses — split equally or with custom amounts.

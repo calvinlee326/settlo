@@ -2,7 +2,6 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar';
 import LoginPage from './pages/LoginPage';
-import VerifyPage from './pages/VerifyPage';
 import HomePage from './pages/HomePage';
 import NewGroupPage from './pages/NewGroupPage';
 import GroupDetailPage from './pages/GroupDetailPage';
@@ -33,7 +32,6 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/verify" element={<VerifyPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route
         path="/"
