@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
-import { useIsAuthenticated } from '../store/authStore';
+import useAuthStore, { useIsAuthenticated } from '../store/authStore';
 import Button from '../components/Button';
 import ErrorMessage from '../components/ErrorMessage';
+import GoogleButton, { isGoogleEnabled } from '../components/GoogleButton';
 import { formatPhone } from '../lib/phone';
 
 export default function LoginPage() {
@@ -12,6 +13,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const isAuthenticated = useIsAuthenticated();
+  const setAuth = useAuthStore((s) => s.setAuth);
 
   if (isAuthenticated) {
     return <Navigate to="/" replace />;
@@ -38,6 +40,17 @@ export default function LoginPage() {
       setError(err.response?.data?.detail || 'Failed to send OTP. Try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogle = async (credential) => {
+    setError('');
+    try {
+      const { data } = await api.post('/auth/google', { credential });
+      setAuth({ user: data.user, accessToken: data.access_token });
+      navigate(data.is_new_user ? '/verify' : '/', { replace: true });
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Google sign-in failed. Try again.');
     }
   };
 
@@ -82,6 +95,15 @@ export default function LoginPage() {
         <p className="mt-4 text-center text-[13px] text-muted">
           New here? An account is created automatically on first login.
         </p>
+        {isGoogleEnabled && (
+          <div className="mt-6 space-y-3 border-t border-rule pt-6">
+            <GoogleButton onCredential={handleGoogle} />
+            <p className="text-center text-[13px] text-muted">
+              Already use Settlo with your phone? Sign in with your phone first,
+              then link Google in Settings to keep your groups.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

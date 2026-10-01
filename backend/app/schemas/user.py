@@ -42,6 +42,10 @@ class VerifyOTPRequest(BaseModel):
         return normalize_us_phone(value)
 
 
+class GoogleAuthRequest(BaseModel):
+    credential: str = Field(min_length=1, max_length=4096)
+
+
 class SetUsernameRequest(BaseModel):
     username: str = Field(min_length=1, max_length=50)
 
@@ -50,7 +54,9 @@ class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: str
-    phone_number: str
+    phone_number: str | None
+    email: str | None
+    google_linked: bool
     username: str | None
     created_at: datetime
 

@@ -21,7 +21,7 @@ class FriendRequestOut(BaseModel):
 class FriendOut(BaseModel):
     id: str
     username: str | None
-    phone_number: str
+    phone_number: str | None
     net_balance: float
 
 

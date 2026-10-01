@@ -75,6 +75,7 @@ Set these variables on the Railway service:
 - `DATABASE_URL` — managed PostgreSQL URL. Plain `postgres://` URLs are converted to `postgresql+psycopg://` automatically for SQLAlchemy and Alembic.
 - `SECRET_KEY` — long random string (placeholder values are rejected at startup).
 - `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_VERIFY_SERVICE_SID` — Twilio Verify credentials for OTP delivery.
+- `GOOGLE_CLIENT_ID` — optional OAuth web client ID; enables Google sign-in (see below). Must match the frontend's `VITE_GOOGLE_CLIENT_ID`.
 - `FRONTEND_URL` — the deployed frontend origin (e.g. `https://settlo-sooty.vercel.app`, no trailing slash). Required for CORS; requests from other origins are rejected.
 - `EXTRA_ORIGINS` — optional comma-separated list of additional trusted origins. These origins can also use the cookie authentication endpoints; do not use wildcards.
 - `REFRESH_COOKIE_SECURE=true` and `REFRESH_COOKIE_SAMESITE=none` — defaults required for the current cross-site Vercel/Railway deployment. `SameSite=none` with an insecure cookie is rejected at startup. Browsers that block third-party cookies may prevent session restoration; deploy frontend and API under the same site (for example `app.example.com` and `api.example.com`) to support those browsers reliably.
@@ -82,6 +83,7 @@ Set these variables on the Railway service:
 ### Frontend (Vercel)
 
 - Set `VITE_API_URL` to the Railway backend URL (e.g. `https://settlo-production.up.railway.app`).
+- Set `VITE_GOOGLE_CLIENT_ID` to show the Google button. Leave it unset to hide Google sign-in entirely.
 - `frontend/vercel.json` rewrites all paths to `index.html` so client-side routes like `/login` work on direct load and refresh.
 
 ## Twilio Verify Setup
@@ -112,6 +114,15 @@ Phone-number login with OTP — no passwords.
 
 Existing sessions stored in `settlo-auth` localStorage are removed on startup; users of the previous version need to sign in once. Refresh tokens in request bodies are no longer accepted. Verification, refresh, and logout require an exact trusted `Origin` header (including API clients). Logout revokes the cookie token and supplied access token before clearing the cookie; a network failure leaves logout available to retry.
 
+### Google sign-in
+
+Google is a second way into the same account, not a separate account system.
+
+- **Existing phone users** sign in with their phone, then use **Settings → Sign-in methods** to link Google. From then on Google opens the same account with all their groups and history. A Google account can be linked to only one Settlo account.
+- **New users** can use Google alone. They get an account with no phone number, named from their Google profile.
+
+Setup: in Google Cloud Console, create an **OAuth client ID** of type *Web application*, add the frontend origins (e.g. `http://localhost:5173` and the Vercel URL) under **Authorized JavaScript origins**, and set the same client ID as `GOOGLE_CLIENT_ID` (backend) and `VITE_GOOGLE_CLIENT_ID` (frontend). The backend checks Google's signature, the audience and the issuer of each ID token.
+
 Security: OTP is delivered and checked by Twilio Verify, OTP sends are rate-limited, logout blacklists tokens, and tokens are not persisted in browser storage.
 
 ## Settlement Algorithm
@@ -128,6 +139,8 @@ This is a heuristic, not an optimum: finding the true minimum number of transact
 |---|---|---|
 | POST | /api/auth/send-otp | Send OTP |
 | POST | /api/auth/verify-otp | Verify OTP, issue tokens |
+| POST | /api/auth/google | Sign in with a Google ID token, issue tokens |
+| POST | /api/auth/google/link | Link Google to the signed-in account |
 | POST | /api/auth/set-username | Set display name |
 | POST | /api/auth/logout | Blacklist token |
 | POST | /api/auth/refresh | New access token |

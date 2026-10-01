@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:5173"
     EXTRA_ORIGINS: str = ""
     DEV_OTP_CODE: str | None = None
+    GOOGLE_CLIENT_ID: str | None = None
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
