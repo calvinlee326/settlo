@@ -2,6 +2,7 @@ from collections import deque
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -16,12 +17,15 @@ from app.models.user import TokenBlacklist, User
 from app.schemas.user import (
     AccessTokenResponse,
     GoogleAuthRequest,
+    HandleAvailability,
     SendOTPRequest,
     SendOTPResponse,
+    SetHandleRequest,
     SetUsernameRequest,
     TokenResponse,
     UserOut,
     VerifyOTPRequest,
+    normalize_handle,
 )
 from app.services.google_auth import (
     GoogleAuthError,
@@ -30,6 +34,7 @@ from app.services.google_auth import (
     verified_email,
     verify_google_token,
 )
+from app.services.handles import handle_problem
 from app.services.otp import (
     OTPDeliveryError,
     OTPInvalidError,
@@ -218,6 +223,43 @@ def set_username(
 ):
     current_user.username = body.username.strip()
     db.commit()
+    db.refresh(current_user)
+    return UserOut.model_validate(current_user)
+
+
+@router.get("/handle-available", response_model=HandleAvailability)
+def handle_available(
+    handle: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        normalized = normalize_handle(handle)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
+        )
+    problem = handle_problem(db, normalized, current_user.id)
+    return HandleAvailability(handle=normalized, available=problem is None, message=problem)
+
+
+@router.post("/set-handle", response_model=UserOut)
+def set_handle(
+    body: SetHandleRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    problem = handle_problem(db, body.handle, current_user.id)
+    if problem:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=problem)
+    current_user.handle = body.handle
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="That ID is already taken"
+        )
     db.refresh(current_user)
     return UserOut.model_validate(current_user)
 

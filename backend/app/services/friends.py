@@ -5,8 +5,16 @@ from sqlalchemy.orm import Session
 
 from app.models.expense import Expense, ExpenseSplit, Settlement
 from app.models.friendship import Friendship, FriendshipStatus
+from app.models.user import User
+from app.schemas.user import UserLookup
 
 CENT = Decimal("0.01")
+
+
+def find_user(db: Session, lookup: UserLookup) -> User | None:
+    if lookup.handle is not None:
+        return db.query(User).filter(User.handle == lookup.handle).first()
+    return db.query(User).filter(User.phone_number == lookup.phone_number).first()
 
 
 def get_friendship(db: Session, user_a: str, user_b: str) -> Friendship | None:

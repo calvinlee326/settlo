@@ -4,6 +4,8 @@ import api from '../api/axios';
 import ErrorMessage from '../components/ErrorMessage';
 import GroupCard from '../components/GroupCard';
 import { SkeletonList } from '../components/LoadingSpinner';
+import SetHandleForm from '../components/SetHandleForm';
+import useAuthStore from '../store/authStore';
 
 // Cap the entry stagger: past this index every card animates together, so a
 // long list finishes in ~550ms instead of growing 50ms per row.
@@ -16,6 +18,8 @@ export default function HomePage() {
   const [error, setError] = useState('');
   const [invites, setInvites] = useState([]);
   const [expenseGroupId, setExpenseGroupId] = useState('');
+  const handle = useAuthStore((s) => s.user?.handle);
+  const needsHandle = !handle;
 
   const loadInvites = () =>
     api
@@ -217,15 +221,30 @@ export default function HomePage() {
               Split bills with friends and settle up with the fewest payments.
             </p>
           </div>
-          <ol className="mx-auto max-w-xs space-y-2 text-left text-[14px] text-ink-soft">
+          <ol className="mx-auto max-w-sm space-y-2 text-left text-[14px] text-ink-soft">
             <li>
-              <span className="font-semibold text-ink">1.</span> Create a group and invite people by phone or QR code.
+              <span className="font-semibold text-ink">1.</span>{' '}
+              {needsHandle ? (
+                'Set your ID so friends can find you.'
+              ) : (
+                <>
+                  Your ID is <span className="font-medium text-ink">{handle}</span>. Share it so friends can add you.
+                </>
+              )}
+              {needsHandle && (
+                <div className="mt-2 rounded-xl bg-paper p-3">
+                  <SetHandleForm />
+                </div>
+              )}
             </li>
             <li>
-              <span className="font-semibold text-ink">2.</span> Add expenses — split equally or with custom amounts.
+              <span className="font-semibold text-ink">2.</span> Create a group and invite people by ID or phone.
             </li>
             <li>
-              <span className="font-semibold text-ink">3.</span> Settle up to see who pays whom.
+              <span className="font-semibold text-ink">3.</span> Add expenses — split equally or with custom amounts.
+            </li>
+            <li>
+              <span className="font-semibold text-ink">4.</span> Settle up to see who pays whom.
             </li>
           </ol>
           <Link
@@ -237,6 +256,14 @@ export default function HomePage() {
         </div>
       ) : (
         <div className="space-y-3">
+          {needsHandle && (
+            <div className="card space-y-2 p-4">
+              <p className="text-[14px] font-medium text-ink">
+                Set your ID so friends can find you
+              </p>
+              <SetHandleForm />
+            </div>
+          )}
           <h2 className="text-lg font-medium text-ink">My groups</h2>
           {activeGroups.map((group, i) => (
             <GroupCard

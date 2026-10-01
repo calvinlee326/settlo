@@ -26,6 +26,9 @@ class User(Base):
         String(255), unique=True, nullable=True, index=True
     )
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    handle: Mapped[str | None] = mapped_column(
+        String(30), unique=True, nullable=True, index=True
+    )
     username: Mapped[str | None] = mapped_column(String(50), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 

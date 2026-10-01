@@ -13,6 +13,7 @@ from app.routers.groups import (
     require_membership,
 )
 from app.schemas.group import GroupDetail, GroupInviteCreate, GroupInvitationOut
+from app.services.friends import find_user
 
 router = APIRouter(prefix="/api/group-invitations", tags=["group-invitations"])
 
@@ -29,10 +30,11 @@ def create_invitation(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Group is already settled"
         )
-    target = db.query(User).filter(User.phone_number == body.phone_number).first()
+    target = find_user(db, body)
     if target is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="No user with that phone number"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No user with that ID or phone number",
         )
     already_member = (
         db.query(Membership)

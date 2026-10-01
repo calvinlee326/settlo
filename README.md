@@ -7,7 +7,7 @@ Split bills for dinners, trips, and more — in groups or one-on-one with friend
 - **Groups** — create a group, add expenses (split equally between any subset of members, or with custom amounts), edit or remove them, and settle up with the fewest transactions.
 - **Balances at a glance** — the home screen shows what you owe or are owed in each group, plus an overall net figure.
 - **Friends & direct expenses** — add friends by phone, log one-on-one expenses outside any group, and track a running balance per friend.
-- **Invitations** — invite someone to a group by phone (a pending invite appears on their home screen), by scanning a QR code, or by adding an existing friend.
+- **Invitations** — invite someone to a group by ID or phone (a pending invite appears on their home screen), by sharing the group's invite link, or by adding an existing friend.
 - **Member management** — the creator can remove members and any member can leave a group; removal is blocked while that member still has expenses or settlements.
 - **Payment history** — settled groups are archived to a dedicated history page.
 - **PWA** — installable, mobile-first interface.
@@ -121,6 +121,10 @@ Google is a second way into the same account, not a separate account system.
 - **Existing phone users** sign in with their phone, then use **Settings → Sign-in methods** to link Google. From then on Google opens the same account with all their groups and history. A Google account can be linked to only one Settlo account.
 - **New users** can use Google alone. They get an account with no phone number, named from their Google profile.
 
+### IDs
+
+Every user picks a unique ID (3-30 letters, numbers, `_` or `.` with at least one letter, case-insensitive, like Instagram). An ID can never be all digits, so the add-friend box can always tell an ID from a phone number. Reserved system names and anything containing `settlo` are refused, and the home page and Settings forms check availability as you type. Signing up does not require one: the home page asks users without an ID to set it (inside the Welcome card for new users, above their groups for existing ones), and anyone can change it in Settings. Friends and group invitations accept an ID or a phone number, so Google-only users without a phone can still be found.
+
 Setup: in Google Cloud Console, create an **OAuth client ID** of type *Web application*, add the frontend origins (e.g. `http://localhost:5173` and the Vercel URL) under **Authorized JavaScript origins**, and set the same client ID as `GOOGLE_CLIENT_ID` (backend) and `VITE_GOOGLE_CLIENT_ID` (frontend). The backend checks Google's signature, the audience and the issuer of each ID token.
 
 Security: OTP is delivered and checked by Twilio Verify, OTP sends are rate-limited, logout blacklists tokens, and tokens are not persisted in browser storage.
@@ -142,12 +146,14 @@ This is a heuristic, not an optimum: finding the true minimum number of transact
 | POST | /api/auth/google | Sign in with a Google ID token, issue tokens |
 | POST | /api/auth/google/link | Link Google to the signed-in account |
 | POST | /api/auth/set-username | Set display name |
+| GET | /api/auth/handle-available | Check whether an ID is free |
+| POST | /api/auth/set-handle | Set unique ID (409 if taken or reserved) |
 | POST | /api/auth/logout | Blacklist token |
 | POST | /api/auth/refresh | New access token |
 | GET | /api/auth/me | Current user |
 | POST/GET | /api/groups/ | Create / list groups |
 | GET/DELETE | /api/groups/{id} | Detail / delete (creator only) |
-| GET | /api/groups/{id}/invite | Invite token (QR / link) |
+| GET | /api/groups/{id}/invite | Invite token for the share link |
 | GET/POST | /api/groups/join/{token} | Preview / join via invite |
 | POST | /api/groups/{id}/members | Add a friend to the group |
 | DELETE | /api/groups/{id}/members/{uid} | Remove member / leave group |
