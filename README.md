@@ -145,7 +145,7 @@ This is a heuristic, not an optimum: finding the true minimum number of transact
 | GET | /api/auth/handle-available | Check whether an ID is free |
 | POST | /api/auth/set-handle | Set unique ID (409 if taken or reserved) |
 | POST | /api/auth/logout | Blacklist token |
-| POST | /api/auth/refresh | New access token |
+| POST | /api/auth/refresh | New access token and current user |
 | GET | /api/auth/me | Current user |
 | POST/GET | /api/groups/ | Create / list groups |
 | GET/DELETE | /api/groups/{id} | Detail / delete (creator only) |
