@@ -14,7 +14,6 @@ from app.core.security import (
 from app.database import get_db
 from app.models.user import TokenBlacklist, User
 from app.schemas.user import (
-    AccessTokenResponse,
     GoogleAuthRequest,
     HandleAvailability,
     SetHandleRequest,
@@ -171,7 +170,7 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
     return {"message": "Logged out"}
 
 
-@router.post("/refresh", response_model=AccessTokenResponse)
+@router.post("/refresh", response_model=TokenResponse)
 def refresh(request: Request, db: Session = Depends(get_db)):
     _check_origin(request)
     cookie = request.cookies.get(REFRESH_COOKIE_NAME)
@@ -196,7 +195,10 @@ def refresh(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found"
         )
-    return AccessTokenResponse(access_token=create_access_token(user.id))
+    return TokenResponse(
+        access_token=create_access_token(user.id),
+        user=UserOut.model_validate(user),
+    )
 
 
 @router.get("/me", response_model=UserOut)

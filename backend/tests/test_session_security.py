@@ -53,6 +53,11 @@ class SessionSecurityTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         return response
 
+    def test_refresh_returns_the_signed_in_user(self):
+        login = self.login()
+        refreshed = self.client.post("/api/auth/refresh")
+        self.assertEqual(refreshed.json()["user"], login.json()["user"])
+
     def test_cookie_login_refresh_and_logout_revocation(self):
         response = self.login()
         cookie_header = response.headers["set-cookie"]
