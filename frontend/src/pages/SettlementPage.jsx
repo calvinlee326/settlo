@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import useSWR from 'swr';
 import api from '../api/axios';
 import Button from '../components/Button';
 import ErrorMessage from '../components/ErrorMessage';
@@ -13,40 +14,19 @@ const STAGGER_CAP = 4;
 export default function SettlementPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [balances, setBalances] = useState([]);
-  const [settlements, setSettlements] = useState([]);
-  const [paidSettlements, setPaidSettlements] = useState([]);
-  const [reversedSettlements, setReversedSettlements] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { data, error: loadError, mutate } = useSWR(`/groups/${id}/settlements/`);
   const [confirming, setConfirming] = useState(false);
   const [pendingId, setPendingId] = useState(null);
   const [error, setError] = useState('');
-
-  const load = useCallback(async () => {
-    setError('');
-    try {
-      const { data } = await api.get(`/groups/${id}/settlements/`);
-      setBalances(data.balances);
-      setSettlements(data.settlements);
-      setPaidSettlements(data.paid_settlements ?? []);
-      setReversedSettlements(data.reversed_settlements ?? []);
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to load settlements');
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
 
   const act = async (settlementId, path, fallback) => {
     setPendingId(settlementId);
     setError('');
     try {
       await api.post(`/groups/${id}/settlements/${settlementId}/${path}`);
-      await load();
+      // Hold the row's pending state until the refreshed list is on screen.
+      // ponytail: re-requests the list the write already refetched, one spare GET per tap.
+      await mutate();
     } catch (err) {
       setError(err.response?.data?.detail || fallback);
     } finally {
@@ -66,8 +46,12 @@ export default function SettlementPage() {
     }
   };
 
-  if (loading) return <SkeletonList count={3} />;
+  if (!data && !loadError) return <SkeletonList count={3} />;
 
+  const balances = data?.balances ?? [];
+  const settlements = data?.settlements ?? [];
+  const paidSettlements = data?.paid_settlements ?? [];
+  const reversedSettlements = data?.reversed_settlements ?? [];
   const outstanding = settlements.length;
 
   return (
@@ -87,7 +71,12 @@ export default function SettlementPage() {
         pay each other however you normally do, then record it here.
       </p>
 
-      <ErrorMessage message={error} />
+      <ErrorMessage
+        message={
+          error ||
+          (loadError ? loadError.response?.data?.detail || 'Failed to load settlements' : '')
+        }
+      />
 
       <div className="card p-5">
         <h2 className="text-[13px] font-medium uppercase tracking-wide text-muted">

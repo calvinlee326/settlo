@@ -1,9 +1,19 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import useSWR from 'swr';
 
 export default function GroupCard({ group, style }) {
+  // Warm the group screen's data on hover/touch so it opens from cache. Unmounting
+  // on leave stops refetches; a started request still lands in the cache.
+  const [warm, setWarm] = useState(false);
+  useSWR(warm ? `/groups/${group.id}` : null);
+  useSWR(warm ? `/groups/${group.id}/expenses/` : null);
+
   return (
     <Link
       to={`/groups/${group.id}`}
+      onPointerEnter={() => setWarm(true)}
+      onPointerLeave={() => setWarm(false)}
       style={style}
       className="card stagger-item block p-4 transition-colors hover:border-rule-strong"
     >

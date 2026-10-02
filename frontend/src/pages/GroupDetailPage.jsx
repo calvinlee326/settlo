@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import useSWR from 'swr';
 import api from '../api/axios';
 import useAuthStore from '../store/authStore';
 import Avatar from '../components/Avatar';
@@ -17,13 +18,16 @@ export default function GroupDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
-  const [group, setGroup] = useState(null);
-  const [expenses, setExpenses] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { data: group, error: groupError, mutate: mutateGroup } = useSWR(`/groups/${id}`);
+  const {
+    data: expensesData,
+    error: expensesError,
+    mutate: mutateExpenses,
+  } = useSWR(`/groups/${id}/expenses/`);
+  const { data: friends = [] } = useSWR('/friends');
   const [error, setError] = useState('');
   const [inviteLink, setInviteLink] = useState('');
   const [linkCopied, setLinkCopied] = useState(false);
-  const [friends, setFriends] = useState([]);
   const [inviteContact, setInviteContact] = useState('');
   const [inviteFriendId, setInviteFriendId] = useState('');
   const [inviteNotice, setInviteNotice] = useState('');
@@ -33,13 +37,10 @@ export default function GroupDetailPage() {
   const [search, setSearch] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
-
-  useEffect(() => {
-    api
-      .get('/friends')
-      .then(({ data }) => setFriends(data))
-      .catch(() => {});
-  }, []);
+  // Warm the settle screen's data on hover/touch so it opens from cache.
+  const [warmSettle, setWarmSettle] = useState(false);
+  useSWR(warmSettle ? `/groups/${id}/settlements/` : null);
+  const expenses = expensesData ?? [];
 
   const sendInvite = async () => {
     setError('');
@@ -66,7 +67,7 @@ export default function GroupDetailPage() {
     setBusy(true);
     try {
       const { data } = await api.post(`/groups/${id}/members`, { user_id: friendId });
-      setGroup(data);
+      mutateGroup(data, { revalidate: false });
       setInviteFriendId('');
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to add friend');
@@ -81,36 +82,17 @@ export default function GroupDetailPage() {
     setBusy(true);
     try {
       await api.delete(`/groups/${id}/members/${memberId}`);
-      setGroup((g) => ({
-        ...g,
-        members: g.members.filter((m) => m.id !== memberId),
-        member_count: g.member_count - 1,
-      }));
+      mutateGroup({
+          ...group,
+          members: group.members.filter((m) => m.id !== memberId),
+          member_count: group.member_count - 1,
+        });
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to remove member');
     } finally {
       setBusy(false);
     }
   };
-
-  const load = useCallback(async () => {
-    try {
-      const [groupRes, expensesRes] = await Promise.all([
-        api.get(`/groups/${id}`),
-        api.get(`/groups/${id}/expenses/`),
-      ]);
-      setGroup(groupRes.data);
-      setExpenses(expensesRes.data);
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to load group');
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
 
   const handleInvite = async () => {
     setError('');
@@ -140,7 +122,7 @@ export default function GroupDetailPage() {
     setBusy(true);
     try {
       await api.delete(`/groups/${id}/expenses/${expenseId}`);
-      setExpenses((prev) => prev.filter((e) => e.id !== expenseId));
+      mutateExpenses(expenses.filter((e) => e.id !== expenseId));
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to delete expense');
     } finally {
@@ -196,8 +178,15 @@ export default function GroupDetailPage() {
 
   const filtersActive = Boolean(search.trim() || fromDate || toDate);
 
-  if (loading) return <SkeletonList count={4} />;
-  if (!group) return <ErrorMessage message={error || 'Group not found'} />;
+  const loadError = groupError || expensesError;
+  if (!loadError && (!group || !expensesData)) return <SkeletonList count={4} />;
+  if (loadError && !(group && expensesData)) {
+    return (
+      <ErrorMessage
+        message={loadError.response?.data?.detail || 'Failed to load group'}
+      />
+    );
+  }
 
   const isCreator = user?.id === group.created_by;
   const isSettled = Boolean(group.settled_at);
@@ -368,7 +357,12 @@ export default function GroupDetailPage() {
       )}
 
       {!isSettled && expenses.length > 0 && (
-        <Link to={`/groups/${id}/settle`} className="block">
+        <Link
+          to={`/groups/${id}/settle`}
+          onPointerEnter={() => setWarmSettle(true)}
+          onPointerLeave={() => setWarmSettle(false)}
+          className="block"
+        >
           <Button variant="primary" className="mt-2 w-full">
             Settle Up
           </Button>

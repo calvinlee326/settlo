@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import useSWR from 'swr';
 import api from '../api/axios';
 import ErrorMessage from '../components/ErrorMessage';
 import GroupCard from '../components/GroupCard';
@@ -12,49 +13,30 @@ import useAuthStore from '../store/authStore';
 const STAGGER_CAP = 4;
 
 export default function HomePage() {
-  const [groups, setGroups] = useState([]);
-  const [friends, setFriends] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [invites, setInvites] = useState([]);
+  const { data: groupsData, error: groupsError } = useSWR('/groups/');
+  const { data: friendsData, error: friendsError } = useSWR('/friends');
+  const { data: invites = [] } = useSWR('/group-invitations');
   const [expenseGroupId, setExpenseGroupId] = useState('');
+  // Warm the next screen's data on hover/touch so it opens from cache.
+  const [warmKey, setWarmKey] = useState(null);
+  useSWR(warmKey);
   const handle = useAuthStore((s) => s.user?.handle);
   const needsHandle = !handle;
-
-  const loadInvites = () =>
-    api
-      .get('/group-invitations')
-      .then(({ data }) => setInvites(data))
-      .catch(() => {});
-
-  useEffect(() => {
-    loadInvites();
-  }, []);
+  const groups = groupsData ?? [];
+  const friends = friendsData ?? [];
+  const loadError = groupsError || friendsError;
+  const loading = !loadError && (!groupsData || !friendsData);
+  const error = loadError
+    ? loadError.response?.data?.detail || 'Failed to load groups'
+    : '';
 
   const respondInvite = async (inviteId, action) => {
     try {
       await api.post(`/group-invitations/${inviteId}/${action}`);
-      await loadInvites();
-      if (action === 'accept') {
-        const { data } = await api.get('/groups/');
-        setGroups(data);
-      }
     } catch {
       // ignore; list reload covers state
     }
   };
-
-  useEffect(() => {
-    Promise.all([api.get('/groups/'), api.get('/friends')])
-      .then(([groupsRes, friendsRes]) => {
-        setGroups(groupsRes.data);
-        setFriends(friendsRes.data);
-      })
-      .catch((err) =>
-        setError(err.response?.data?.detail || 'Failed to load groups')
-      )
-      .finally(() => setLoading(false));
-  }, []);
 
   const activeGroups = useMemo(
     () => groups.filter((g) => !g.settled_at),
@@ -71,6 +53,7 @@ export default function HomePage() {
         name: g.name,
         balance: g.my_balance,
         to: `/groups/${g.id}/settle`,
+        warm: `/groups/${g.id}/settlements/`,
       }));
     const fromFriends = friends
       .filter((f) => Math.abs(f.net_balance || 0) >= 0.005)
@@ -145,6 +128,8 @@ export default function HomePage() {
               </select>
               <Link
                 to={`/groups/${expenseGroupId || activeGroups[0].id}/expenses/new`}
+                onPointerEnter={() => setWarmKey(`/groups/${expenseGroupId || activeGroups[0].id}`)}
+                onPointerLeave={() => setWarmKey(null)}
                 className="shrink-0 rounded-xl bg-ink px-4 py-2 text-[13px] font-medium text-white transition-opacity hover:opacity-80"
               >
                 Add expense
@@ -167,6 +152,8 @@ export default function HomePage() {
             <Link
               key={item.key}
               to={item.to}
+              onPointerEnter={() => setWarmKey(item.warm)}
+              onPointerLeave={() => setWarmKey(null)}
               className="card flex items-center justify-between gap-3 p-4 transition-colors hover:border-rule-strong"
             >
               <span className="min-w-0 flex-1 truncate text-[15px] text-ink">

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { mutate, unload } from 'swr';
 import useAuthStore from '../store/authStore';
 
 const API_BASE_URL =
@@ -26,7 +27,7 @@ async function refreshAccessToken() {
       withCredentials: true,
     }).then(({ data }) => {
       useAuthStore.getState().setAccessToken(data.access_token);
-      return data.access_token;
+      return data;
     }).finally(() => { refreshPromise = null; });
   }
   return refreshPromise;
@@ -35,9 +36,8 @@ async function refreshAccessToken() {
 export async function initializeSession() {
   useAuthStore.getState().setSessionStatus('loading');
   try {
-    await refreshAccessToken();
-    const { data } = await api.get('/auth/me', { _retry: true });
-    useAuthStore.getState().setUser(data);
+    const { user } = await refreshAccessToken();
+    useAuthStore.getState().setUser(user);
     useAuthStore.getState().setSessionStatus('ready');
   } catch (error) {
     if (error.response?.status === 401) {
@@ -49,7 +49,17 @@ export async function initializeSession() {
 }
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const { method, url } = response.config;
+    // A write can move balances on any screen: drop every cached read so the
+    // next screen fetches fresh, and refetch the ones on show (keepPreviousData
+    // keeps them on screen meanwhile). Auth writes are skipped: logout must not
+    // refetch, and an account switch is handled below.
+    if (method !== 'get' && !url.startsWith('/auth/')) {
+      mutate(() => true, undefined, { revalidate: true });
+    }
+    return response;
+  },
   async (error) => {
     const original = error.config;
     const isAuthRoute =
@@ -64,7 +74,7 @@ api.interceptors.response.use(
     ) {
       original._retry = true;
       try {
-        const token = await refreshAccessToken();
+        const { access_token: token } = await refreshAccessToken();
         original.headers.Authorization = `Bearer ${token}`;
         return api(original);
       } catch (refreshError) {
@@ -77,5 +87,12 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+export const fetcher = (url) => api.get(url).then(({ data }) => data);
+
+// Never let one account's cached reads reach the next one on this tab.
+useAuthStore.subscribe((state, prev) => {
+  if (state.user?.id !== prev.user?.id) unload({ revalidate: false });
+});
 
 export default api;
