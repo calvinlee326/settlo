@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import useSWR from 'swr';
 import api from '../api/axios';
 import useAuthStore from '../store/authStore';
 import Button from '../components/Button';
@@ -12,50 +13,56 @@ export default function NewExpensePage() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
 
-  const [members, setMembers] = useState([]);
+  const { data: group, error: groupError } = useSWR(`/groups/${id}`);
+  const { data: expenses, error: expensesError } = useSWR(
+    isEdit ? `/groups/${id}/expenses/` : null
+  );
+  const members = useMemo(() => group?.members ?? [], [group]);
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
   const [paidBy, setPaidBy] = useState('');
   const [splitType, setSplitType] = useState('EQUAL');
   const [customSplits, setCustomSplits] = useState({});
   const [participants, setParticipants] = useState([]);
+  const [participantsTouched, setParticipantsTouched] = useState(false);
   const [history, setHistory] = useState([]);
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [formReady, setFormReady] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const loadError = groupError || expensesError;
 
-  useEffect(() => {
-    const requests = [api.get(`/groups/${id}`)];
-    if (isEdit) requests.push(api.get(`/groups/${id}/expenses/`));
-    Promise.all(requests)
-      .then(([groupRes, expensesRes]) => {
-        setMembers(groupRes.data.members);
-        const expense = expensesRes?.data.find((e) => e.id === expenseId);
-        if (isEdit && !expense) {
-          setError('Expense not found');
-          return;
-        }
-        if (expense) {
-          setTitle(expense.title);
-          setAmount(expense.amount.toFixed(2));
-          setPaidBy(expense.paid_by);
-          setSplitType(expense.split_type);
-          setParticipants(expense.splits.map((s) => s.user_id));
-          setCustomSplits(
-            Object.fromEntries(
-              expense.splits.map((s) => [s.user_id, s.amount.toFixed(2)])
-            )
-          );
-        } else {
-          setPaidBy(user?.id || groupRes.data.members[0]?.id || '');
-          setParticipants(groupRes.data.members.map((m) => m.id));
-        }
-      })
-      .catch((err) =>
-        setError(err.response?.data?.detail || 'Failed to load group')
-      )
-      .finally(() => setLoading(false));
-  }, [id, expenseId, isEdit, user]);
+  // Fill the form once from the first data on hand; a background refetch must
+  // not overwrite what the user is typing. Layout effect: with cached data the
+  // form paints filled, without a skeleton frame.
+  useLayoutEffect(() => {
+    if (formReady || !group || (isEdit && !expenses)) return;
+    const expense = expenses?.find((e) => e.id === expenseId);
+    if (isEdit && !expense) {
+      setError('Expense not found');
+    } else if (expense) {
+      setTitle(expense.title);
+      setAmount(expense.amount.toFixed(2));
+      setPaidBy(expense.paid_by);
+      setSplitType(expense.split_type);
+      setParticipants(expense.splits.map((s) => s.user_id));
+      setCustomSplits(
+        Object.fromEntries(
+          expense.splits.map((s) => [s.user_id, s.amount.toFixed(2)])
+        )
+      );
+    } else {
+      setPaidBy(user?.id || group.members[0]?.id || '');
+    }
+    setFormReady(true);
+  }, [formReady, group, expenses, isEdit, expenseId, user]);
+
+  // The cached group can miss a member added elsewhere; until the user picks
+  // participants by hand, a new expense keeps splitting with everyone.
+  useLayoutEffect(() => {
+    if (formReady && !isEdit && !participantsTouched) {
+      setParticipants(members.map((m) => m.id));
+    }
+  }, [formReady, isEdit, participantsTouched, members]);
 
   useEffect(() => {
     if (!isEdit) return;
@@ -90,12 +97,14 @@ export default function NewExpensePage() {
     );
   }, [members, participants, totalAmount]);
 
-  const toggleParticipant = (memberId) =>
+  const toggleParticipant = (memberId) => {
+    setParticipantsTouched(true);
     setParticipants((prev) =>
       prev.includes(memberId)
         ? prev.filter((existing) => existing !== memberId)
         : [...prev, memberId]
     );
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -147,7 +156,7 @@ export default function NewExpensePage() {
     }
   };
 
-  if (loading) return <SkeletonList count={3} />;
+  if (!loadError && (!group || (isEdit && !expenses))) return <SkeletonList count={3} />;
 
   return (
     <div className="space-y-4">
@@ -334,7 +343,12 @@ export default function NewExpensePage() {
           </div>
         )}
 
-        <ErrorMessage message={error} />
+        <ErrorMessage
+          message={
+            error ||
+            (loadError ? loadError.response?.data?.detail || 'Failed to load group' : '')
+          }
+        />
         <div className="flex gap-3">
           <Button
             type="button"

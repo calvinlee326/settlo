@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import useSWR from 'swr';
 import api from '../api/axios';
 import useAuthStore from '../store/authStore';
 
@@ -9,48 +10,25 @@ export default function Navbar() {
   const [logoutError, setLogoutError] = useState('');
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [requestCount, setRequestCount] = useState(0);
-  const [inviteCount, setInviteCount] = useState(0);
   const menuRef = useRef(null);
+  // Poll incoming friend requests and group invites so the badges update when
+  // someone adds you. HomePage reads the same invites key, so it is fetched once.
+  const { data: requests } = useSWR(user ? '/friends/requests' : null, { refreshInterval: 30000 });
+  const { data: invites } = useSWR(user ? '/group-invitations' : null, { refreshInterval: 30000 });
+  const requestCount = requests?.length ?? 0;
+  const inviteCount = invites?.length ?? 0;
+  // Warm the main lists on hover/touch of a nav link so the next screen opens from cache.
+  const [warm, setWarm] = useState(false);
+  useSWR(warm ? '/groups/' : null);
+  useSWR(warm ? '/friends' : null);
+  const warmLists = () => setWarm(true);
+  const coolLists = () => setWarm(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
-
-  // Poll incoming friend requests so the badge updates when someone adds you.
-  useEffect(() => {
-    if (!user) return;
-    let active = true;
-    const fetchCount = () =>
-      api
-        .get('/friends/requests')
-        .then(({ data }) => active && setRequestCount(data.length))
-        .catch(() => {});
-    fetchCount();
-    const id = setInterval(fetchCount, 30000);
-    return () => {
-      active = false;
-      clearInterval(id);
-    };
-  }, [user]);
-
-  useEffect(() => {
-    if (!user) return;
-    let active = true;
-    const fetchInvites = () =>
-      api
-        .get('/group-invitations')
-        .then(({ data }) => active && setInviteCount(data.length))
-        .catch(() => {});
-    fetchInvites();
-    const id = setInterval(fetchInvites, 30000);
-    return () => {
-      active = false;
-      clearInterval(id);
-    };
-  }, [user]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -81,6 +59,8 @@ export default function Navbar() {
       <div className="mx-auto flex h-full max-w-[480px] items-center justify-between px-4">
         <Link
           to="/"
+          onPointerEnter={warmLists}
+          onPointerLeave={coolLists}
           className="relative text-lg font-semibold tracking-tight text-ink"
         >
           Settlo
@@ -93,6 +73,8 @@ export default function Navbar() {
         <div className="flex items-center gap-4">
           <Link
             to="/friends"
+            onPointerEnter={warmLists}
+            onPointerLeave={coolLists}
             className="relative text-sm font-medium text-muted transition-colors hover:text-ink"
           >
             Friends
@@ -122,6 +104,8 @@ export default function Navbar() {
               {menuOpen && (
                 <div className="card absolute right-0 mt-2 w-40 overflow-hidden py-1">
                   <button
+                    onPointerEnter={warmLists}
+                    onPointerLeave={coolLists}
                     onClick={() => {
                       setMenuOpen(false);
                       navigate('/history');

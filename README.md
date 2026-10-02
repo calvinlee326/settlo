@@ -98,7 +98,7 @@ Set these variables on the Railway service:
 Sign-in is Google only — no passwords, no SMS.
 
 1. Click **Continue with Google** on `/login`. A first-time Google account gets a Settlo account automatically, named from the Google profile (or the email address if Google has no name).
-2. The app keeps a 30-minute access token in memory. A 7-day refresh token is set only as an HttpOnly cookie, scoped to `/api/auth`; it never appears in JSON or browser JavaScript storage. On reload the app restores the session using `/refresh` and `/me` before routing. Connection failures show a retry option without discarding the session.
+2. The app keeps a 30-minute access token in memory. A 7-day refresh token is set only as an HttpOnly cookie, scoped to `/api/auth`; it never appears in JSON or browser JavaScript storage. On reload the app restores the session with a single `/refresh` call, which returns the new access token and the current user, before routing. Connection failures show a retry option without discarding the session.
 
 Refresh tokens in request bodies are not accepted. Sign-in, refresh, and logout require an exact trusted `Origin` header (including API clients). Logout revokes the cookie token and supplied access token before clearing the cookie; a network failure leaves logout available to retry.
 

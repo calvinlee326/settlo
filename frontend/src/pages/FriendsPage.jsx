@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import useSWR from 'swr';
 import api from '../api/axios';
 import Button from '../components/Button';
 import ErrorMessage from '../components/ErrorMessage';
@@ -8,28 +9,16 @@ import { isValidHandle, normalizeHandle } from '../lib/handle';
 import useAuthStore from '../store/authStore';
 
 export default function FriendsPage() {
-  const [friends, setFriends] = useState([]);
-  const [requests, setRequests] = useState([]);
+  const { data: friendsData, error: friendsError } = useSWR('/friends');
+  const { data: requestsData, error: requestsError } = useSWR('/friends/requests');
   const [contact, setContact] = useState('');
   const myHandle = useAuthStore((s) => s.user?.handle);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [loading, setLoading] = useState(true);
-
-  const load = () =>
-    Promise.all([api.get('/friends'), api.get('/friends/requests')])
-      .then(([f, r]) => {
-        setFriends(f.data);
-        setRequests(r.data);
-      })
-      .catch((err) =>
-        setError(err.response?.data?.detail || 'Failed to load friends')
-      )
-      .finally(() => setLoading(false));
-
-  useEffect(() => {
-    load();
-  }, []);
+  const friends = friendsData ?? [];
+  const requests = requestsData ?? [];
+  const loadError = friendsError || requestsError;
+  const loading = !loadError && (!friendsData || !requestsData);
 
   const addFriend = async () => {
     setError('');
@@ -53,7 +42,6 @@ export default function FriendsPage() {
     setError('');
     try {
       await api.post(`/friends/requests/${id}/${action}`);
-      await load();
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to update request');
     }
@@ -63,7 +51,6 @@ export default function FriendsPage() {
     setError('');
     try {
       await api.post(`/friends/${friendId}/settle`);
-      await load();
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to settle');
     }
@@ -74,7 +61,6 @@ export default function FriendsPage() {
     setError('');
     try {
       await api.delete(`/friends/${friendId}`);
-      await load();
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to remove friend');
     }
@@ -85,7 +71,12 @@ export default function FriendsPage() {
   return (
     <div className="space-y-4">
       <h1 className="text-[28px] font-semibold text-ink">Friends</h1>
-      <ErrorMessage message={error} />
+      <ErrorMessage
+        message={
+          error ||
+          (loadError ? loadError.response?.data?.detail || 'Failed to load friends' : '')
+        }
+      />
       {notice && <p className="text-sm text-ink">{notice}</p>}
 
       <div className="card space-y-3 p-4">

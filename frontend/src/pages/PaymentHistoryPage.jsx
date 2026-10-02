@@ -1,25 +1,17 @@
-import { useEffect, useState } from 'react';
-import api from '../api/axios';
+import useSWR from 'swr';
 import ErrorMessage from '../components/ErrorMessage';
 import { SkeletonList } from '../components/LoadingSpinner';
 import useAuthStore from '../store/authStore';
 import PaymentHistoryItem from '../components/PaymentHistoryItem';
 
 export default function PaymentHistoryPage() {
-  const [groups, setGroups] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { data, error: loadError, mutate } = useSWR('/groups/');
   const user = useAuthStore((s) => s.user);
-
-  useEffect(() => {
-    api
-      .get('/groups/')
-      .then(({ data }) => setGroups(data))
-      .catch((err) =>
-        setError(err.response?.data?.detail || 'Failed to load history')
-      )
-      .finally(() => setLoading(false));
-  }, []);
+  const groups = data ?? [];
+  const loading = !data && !loadError;
+  const error = loadError
+    ? loadError.response?.data?.detail || 'Failed to load history'
+    : '';
 
   const settledGroups = groups.filter((g) => g.settled_at);
 
@@ -40,9 +32,7 @@ export default function PaymentHistoryPage() {
               key={group.id}
               group={group}
               canDelete={group.created_by === user?.id}
-              onDeleted={(gid) =>
-                setGroups((prev) => prev.filter((g) => g.id !== gid))
-              }
+              onDeleted={(gid) => mutate(groups.filter((g) => g.id !== gid))}
             />
           ))}
         </div>

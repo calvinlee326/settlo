@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import useSWR from 'swr';
 import api from '../api/axios';
 import useAuthStore from '../store/authStore';
 import Button from '../components/Button';
@@ -10,24 +11,14 @@ export default function NewDirectExpensePage() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
 
-  const [friends, setFriends] = useState([]);
+  const { data: friendsData, error: loadError } = useSWR('/friends');
   const [selected, setSelected] = useState({});
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
   const [paidBy, setPaidBy] = useState(user?.id || '');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    api
-      .get('/friends')
-      .then(({ data }) => setFriends(data))
-      .catch((err) =>
-        setError(err.response?.data?.detail || 'Failed to load friends')
-      )
-      .finally(() => setLoading(false));
-  }, []);
+  const friends = friendsData ?? [];
 
   // Ensure paidBy is set once user is available
   useEffect(() => {
@@ -76,7 +67,7 @@ export default function NewDirectExpensePage() {
     }
   };
 
-  if (loading) return <SkeletonList count={3} />;
+  if (!friendsData && !loadError) return <SkeletonList count={3} />;
 
   const payerOptions = friends.filter((f) => selected[f.id]);
 
@@ -166,7 +157,12 @@ export default function NewDirectExpensePage() {
           </select>
         </div>
 
-        <ErrorMessage message={error} />
+        <ErrorMessage
+          message={
+            error ||
+            (loadError ? loadError.response?.data?.detail || 'Failed to load friends' : '')
+          }
+        />
         <div className="flex gap-3">
           <Button
             type="button"
