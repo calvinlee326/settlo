@@ -61,6 +61,7 @@ class PublicReadinessTest(unittest.TestCase):
             paid_by=payer.id,
             title="Dinner",
             amount=Decimal("100.00"),
+            amount_usd=Decimal("100.00"),
             currency="USD",
             split_type=SplitType.CUSTOM,
             created_by=creator.id,
@@ -73,6 +74,7 @@ class PublicReadinessTest(unittest.TestCase):
                     expense_id=expense.id,
                     user_id=user.id,
                     amount=Decimal(amount),
+                    amount_usd=Decimal(amount),
                 )
             )
         self.db.commit()

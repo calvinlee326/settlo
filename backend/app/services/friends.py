@@ -66,7 +66,7 @@ def friend_balance(db: Session, user_id: str, friend_id: str) -> Decimal:
 
     # Direct expenses user paid -> friend's share is owed to user.
     paid_by_user = (
-        db.query(ExpenseSplit.amount)
+        db.query(ExpenseSplit.amount_usd)
         .join(Expense, Expense.id == ExpenseSplit.expense_id)
         .filter(
             Expense.group_id.is_(None),
@@ -80,7 +80,7 @@ def friend_balance(db: Session, user_id: str, friend_id: str) -> Decimal:
 
     # Direct expenses friend paid -> user's share is owed to friend.
     paid_by_friend = (
-        db.query(ExpenseSplit.amount)
+        db.query(ExpenseSplit.amount_usd)
         .join(Expense, Expense.id == ExpenseSplit.expense_id)
         .filter(
             Expense.group_id.is_(None),

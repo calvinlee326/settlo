@@ -6,6 +6,7 @@ import useAuthStore from '../store/authStore';
 import Button from '../components/Button';
 import ErrorMessage from '../components/ErrorMessage';
 import { SkeletonList } from '../components/LoadingSpinner';
+import { BASE_CURRENCY, CURRENCIES, useMoney } from '../lib/currency';
 
 export default function NewDirectExpensePage() {
   const navigate = useNavigate();
@@ -15,6 +16,8 @@ export default function NewDirectExpensePage() {
   const [selected, setSelected] = useState({});
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
+  const [currency, setCurrency] = useState(BASE_CURRENCY);
+  const { rates, format } = useMoney();
   const [paidBy, setPaidBy] = useState(user?.id || '');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -35,6 +38,7 @@ export default function NewDirectExpensePage() {
   }, [friends, selected, user]);
 
   const totalAmount = parseFloat(amount) || 0;
+  const rate = currency === BASE_CURRENCY ? 1 : rates?.[currency];
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -56,6 +60,7 @@ export default function NewDirectExpensePage() {
       await api.post('/direct-expenses', {
         title: title.trim(),
         amount: totalAmount.toFixed(2),
+        currency,
         paid_by: paidBy,
         split_type: 'EQUAL',
         participant_ids: participantIds,
@@ -93,10 +98,17 @@ export default function NewDirectExpensePage() {
           <label className="mb-1.5 block text-[13px] font-medium text-muted">
             Amount
           </label>
-          <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted">
-              $
-            </span>
+          <div className="flex gap-2">
+            <select
+              aria-label="Currency"
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value)}
+              className="input w-24 shrink-0"
+            >
+              {CURRENCIES.map((c) => (
+                <option key={c.code} value={c.code}>{c.code}</option>
+              ))}
+            </select>
             <input
               type="number"
               inputMode="decimal"
@@ -105,9 +117,18 @@ export default function NewDirectExpensePage() {
               placeholder="0.00"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="input pl-8"
+              className="input flex-1"
             />
           </div>
+          {currency !== BASE_CURRENCY && (
+            <p className="mt-1.5 text-[12px] tabular-nums text-muted">
+              {rate
+                ? `1 USD = ${rate.toLocaleString('en-US', { maximumFractionDigits: 4 })} ${currency}${
+                    totalAmount > 0 ? ` · ≈ ${format(totalAmount / rate)}` : ''
+                  }`
+                : 'Loading exchange rate…'}
+            </p>
+          )}
         </div>
 
         <div>

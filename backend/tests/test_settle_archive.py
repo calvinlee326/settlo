@@ -49,13 +49,13 @@ class SettleArchiveTest(unittest.TestCase):
     def _expense(self, group, payer, a, b, total, share_a, share_b):
         e = Expense(
             group_id=group.id, paid_by=payer.id, title="X",
-            amount=Decimal(total), created_by=payer.id,
+            amount=Decimal(total), amount_usd=Decimal(total), created_by=payer.id,
         )
         self.db.add(e)
         self.db.flush()
         self.db.add_all([
-            ExpenseSplit(expense_id=e.id, user_id=a.id, amount=Decimal(share_a)),
-            ExpenseSplit(expense_id=e.id, user_id=b.id, amount=Decimal(share_b)),
+            ExpenseSplit(expense_id=e.id, user_id=a.id, amount=Decimal(share_a), amount_usd=Decimal(share_a)),
+            ExpenseSplit(expense_id=e.id, user_id=b.id, amount=Decimal(share_b), amount_usd=Decimal(share_b)),
         ])
         self.db.commit()
         return e

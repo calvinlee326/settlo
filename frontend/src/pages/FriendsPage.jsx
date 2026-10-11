@@ -5,6 +5,7 @@ import api from '../api/axios';
 import Button from '../components/Button';
 import ErrorMessage from '../components/ErrorMessage';
 import { SkeletonList } from '../components/LoadingSpinner';
+import { useMoney } from '../lib/currency';
 import { isValidHandle, normalizeHandle } from '../lib/handle';
 import useAuthStore from '../store/authStore';
 
@@ -12,6 +13,7 @@ export default function FriendsPage() {
   const { data: friendsData, error: friendsError } = useSWR('/friends');
   const { data: requestsData, error: requestsError } = useSWR('/friends/requests');
   const [contact, setContact] = useState('');
+  const { format } = useMoney();
   const myHandle = useAuthStore((s) => s.user?.handle);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -162,9 +164,9 @@ export default function FriendsPage() {
                   }`}
                 >
                   {f.net_balance > 0
-                    ? `owes you $${f.net_balance.toFixed(2)}`
+                    ? `owes you ${format(f.net_balance)}`
                     : f.net_balance < 0
-                      ? `you owe $${Math.abs(f.net_balance).toFixed(2)}`
+                      ? `you owe ${format(Math.abs(f.net_balance))}`
                       : 'settled up'}
                 </p>
               </div>

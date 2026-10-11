@@ -11,6 +11,8 @@ from app.routers.expenses import _build_splits, _expense_out
 from app.schemas.expense import ExpenseOut
 from app.schemas.friend import DirectExpenseCreate
 from app.services import friends as friends_svc
+from app.services import fx
+from app.services.settlement import add_splits
 
 router = APIRouter(prefix="/api/direct-expenses", tags=["direct-expenses"])
 
@@ -23,6 +25,7 @@ def create_direct_expense(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    rate = fx.rate_for(body.currency)
     participants = set(body.participant_ids)
     if current_user.id not in participants:
         raise HTTPException(
@@ -50,14 +53,15 @@ def create_direct_expense(
         paid_by=body.paid_by,
         title=body.title.strip(),
         amount=body.amount.quantize(CENT),
-        currency=body.currency.upper(),
+        currency=body.currency,
+        fx_rate=rate,
+        amount_usd=fx.to_usd(body.amount.quantize(CENT), rate),
         split_type=body.split_type,
         created_by=current_user.id,
     )
     db.add(expense)
     db.flush()
-    for user_id, amount in splits:
-        db.add(ExpenseSplit(expense_id=expense.id, user_id=user_id, amount=amount))
+    add_splits(db, expense, splits)
     db.commit()
     db.refresh(expense)
     return _expense_out(expense)

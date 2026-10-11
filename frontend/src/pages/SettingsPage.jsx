@@ -5,6 +5,7 @@ import useAuthStore from '../store/authStore';
 import Button from '../components/Button';
 import ErrorMessage from '../components/ErrorMessage';
 import HandleInput from '../components/HandleInput';
+import { CURRENCIES, useDisplayCurrencyStore } from '../lib/currency';
 import { HANDLE_RULES, isValidHandle, normalizeHandle } from '../lib/handle';
 import { SUPPORT_URL, USER_GUIDE_URL } from '../lib/links';
 
@@ -12,6 +13,8 @@ export default function SettingsPage() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
+  const displayCurrency = useDisplayCurrencyStore((s) => s.currency);
+  const setDisplayCurrency = useDisplayCurrencyStore((s) => s.setCurrency);
   const [username, setUsername] = useState(user?.username || '');
   const [handle, setHandle] = useState(user?.handle || '');
   const [error, setError] = useState('');
@@ -100,6 +103,26 @@ export default function SettingsPage() {
           </Button>
         </div>
       </form>
+      <div className="card space-y-1.5 p-6">
+        <label htmlFor="display-currency" className="block text-[13px] font-medium text-muted">
+          Show totals in
+        </label>
+        <select
+          id="display-currency"
+          value={displayCurrency}
+          onChange={(e) => setDisplayCurrency(e.target.value)}
+          className="input"
+        >
+          {CURRENCIES.map((c) => (
+            <option key={c.code} value={c.code}>
+              {c.code} — {c.label}
+            </option>
+          ))}
+        </select>
+        <p className="text-[12px] text-muted">
+          Balances convert at today&rsquo;s rate. Each expense keeps the rate from the day it was added.
+        </p>
+      </div>
       {user?.email && (
         <div className="card space-y-1 p-6">
           <h2 className="text-[13px] font-medium text-muted">Signed in with Google</h2>
