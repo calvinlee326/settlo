@@ -12,6 +12,7 @@ from app.database import get_db
 from app.models.expense import Expense, ExpenseSplit, Settlement, SplitType
 from app.models.group import Group, Membership
 from app.models.user import User, utcnow
+from app.services import fx
 from app.services.settlement import add_splits, equal_split, net_balances_by_group
 from app.schemas.group import (
     AddMemberRequest,
@@ -124,7 +125,7 @@ def _add_member(db: Session, group: Group, user_id: str) -> None:
             ExpenseSplit.expense_id.in_([e.id for e in widening])
         ).delete(synchronize_session=False)
         for e in widening:
-            add_splits(db, e, equal_split(Decimal(e.amount), member_ids))
+            add_splits(db, e, equal_split(Decimal(e.amount), member_ids, fx.currency_unit(e.currency)))
 
 
 def _member_out(membership: Membership) -> MemberOut:

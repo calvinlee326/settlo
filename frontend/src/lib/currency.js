@@ -15,6 +15,12 @@ export const CURRENCIES = [
 ];
 
 const CODES = new Set(CURRENCIES.map((c) => c.code));
+// Whole amounts only, matching the backend's currency_unit.
+const ZERO_DECIMAL = new Set(['JPY', 'KRW']);
+// Rates change once a day; refetch on page switches at most hourly.
+const RATES_REFRESH_MS = 60 * 60 * 1000;
+
+export const currencyStep = (code) => (ZERO_DECIMAL.has(code) ? 1 : 0.01);
 const formatters = new Map();
 
 export function formatMoney(amount, currency) {
@@ -38,7 +44,10 @@ export const useDisplayCurrencyStore = create(
 );
 
 export function useRates() {
-  const { data } = useSWR('/rates', { revalidateOnFocus: false });
+  const { data } = useSWR('/rates', {
+    revalidateOnFocus: false,
+    dedupingInterval: RATES_REFRESH_MS,
+  });
   return data?.rates;
 }
 

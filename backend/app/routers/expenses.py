@@ -47,13 +47,19 @@ def _build_splits(
     body: ExpenseCreate, member_ids: list[str]
 ) -> list[tuple[str, Decimal]]:
     total = body.amount.quantize(CENT)
+    unit = fx.currency_unit(body.currency)
+    if any(a % unit for a in [total, *(s.amount for s in body.splits or [])]):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"{body.currency} amounts must be whole numbers",
+        )
 
     if body.split_type == SplitType.EQUAL:
         # Direct expenses reuse this helper and always split between exactly the
         # two people already in member_ids, so they carry no participants field.
         chosen = getattr(body, "participants", None)
         if chosen is None:
-            return equal_split(total, member_ids)
+            return equal_split(total, member_ids, unit)
         participants = list(dict.fromkeys(chosen))
         if not participants:
             raise HTTPException(
@@ -69,7 +75,7 @@ def _build_splits(
         # Preserve the caller's member order so the extra rounding cents land
         # deterministically rather than in request order.
         ordered = [uid for uid in member_ids if uid in set(participants)]
-        return equal_split(total, ordered)
+        return equal_split(total, ordered, unit)
 
     if not body.splits:
         raise HTTPException(
@@ -177,6 +183,18 @@ def update_expense(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    # An edit keeps the rate from when the expense was added; a new one is only
+    # needed if the currency changes. Fetch it before taking the group lock.
+    stored_currency = (
+        db.query(Expense.currency)
+        .filter(Expense.id == expense_id, Expense.group_id == group_id)
+        .scalar()
+    )
+    new_rate = (
+        fx.rate_for(body.currency)
+        if stored_currency not in (None, body.currency)
+        else None
+    )
     group = get_group_or_404(db, group_id, lock=True)
     require_membership(db, group_id, current_user.id)
     if group.settled_at is not None:
@@ -217,9 +235,9 @@ def update_expense(
         expense_id=expense.id, changed_by=current_user.id,
         snapshot=_expense_out(expense).model_dump(mode="json"),
     ))
-    # Keep the rate from when the expense was added unless its currency changes.
     if body.currency != expense.currency:
-        expense.fx_rate = fx.rate_for(body.currency)
+        # new_rate is None only if another edit changed the currency meanwhile.
+        expense.fx_rate = new_rate or fx.rate_for(body.currency)
     expense.title = body.title.strip()
     expense.amount = body.amount.quantize(CENT)
     expense.currency = body.currency

@@ -8,7 +8,7 @@ os.environ.setdefault("SECRET_KEY", "test-secret-key-for-friendships-12345")
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -268,6 +268,31 @@ class FriendListApiTest(unittest.TestCase):
 
     def _auth(self, user):
         return {"Authorization": f"Bearer {create_access_token(user.id)}"}
+
+    def test_friend_list_query_count_does_not_grow_with_friends(self):
+        def count_queries():
+            statements = []
+            listener = lambda conn, cur, stmt, params, ctx, many: statements.append(stmt)
+            event.listen(self.engine, "before_cursor_execute", listener)
+            try:
+                res = self.client.get("/api/friends", headers=self._auth(self.a))
+            finally:
+                event.remove(self.engine, "before_cursor_execute", listener)
+            return len(res.json()), len(statements)
+
+        few_friends, few_queries = count_queries()
+        for i in range(5):
+            friend = User(phone_number=f"+1555000010{i}", username=f"F{i}", handle=f"friend{i}")
+            self.db.add(friend)
+            self.db.flush()
+            self.db.add(Friendship(
+                requester_id=self.a.id, addressee_id=friend.id, status=FriendshipStatus.ACCEPTED
+            ))
+        self.db.commit()
+        many_friends, many_queries = count_queries()
+
+        self.assertEqual((few_friends, many_friends), (1, 6))
+        self.assertEqual(few_queries, many_queries)
 
     def test_list_friends(self):
         res = self.client.get("/api/friends", headers=self._auth(self.a))

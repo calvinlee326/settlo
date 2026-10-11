@@ -1,3 +1,5 @@
+import io
+import json
 import os
 import sys
 import unittest
@@ -21,6 +23,7 @@ from app.models.friendship import Friendship, FriendshipStatus
 from app.models.group import Group, Membership
 from app.models.user import User
 from app.services import fx
+from app.services.settlement import equal_split
 
 RATES = {
     "USD": Decimal("1"), "TWD": Decimal("31.959582"), "JPY": Decimal("158.287265"),
@@ -35,11 +38,36 @@ class SharesToUsdTest(unittest.TestCase):
         rate = RATES["JPY"]
         self.assertEqual(sum(fx.shares_to_usd(shares, rate)), fx.to_usd(Decimal("1000"), rate))
 
+    def test_fetched_rates_match_stored_precision(self):
+        payload = {"result": "success", "rates": {**{c: 1 for c in RATES}, "EUR": 0.89243812}}
+        body = io.BytesIO(json.dumps(payload).encode())
+        with patch("app.services.fx.urllib.request.urlopen", return_value=body):
+            self.assertEqual(fx._fetch_rates()[0]["EUR"], Decimal("0.892438"))
+
+    def test_rates_kept_until_provider_publishes_new_ones(self):
+        fx._cached = None
+        with patch("app.services.fx._fetch_rates", return_value=(dict(RATES), 50_000.0)) as fetch, \
+                patch("app.services.fx.time.time", side_effect=[1_000.0, 49_999.0, 50_001.0]):
+            for _ in range(3):
+                fx.usd_rates()
+        fx._cached = None
+        self.assertEqual(fetch.call_count, 2)
+
+
+class WholeUnitSplitTest(unittest.TestCase):
+    def test_yen_splits_into_whole_yen(self):
+        shares = [a for _, a in equal_split(Decimal("1000"), ["a", "b", "c"], fx.currency_unit("JPY"))]
+        self.assertEqual(shares, [Decimal("334"), Decimal("333"), Decimal("333")])
+
+    def test_legacy_fractional_yen_still_adds_up(self):
+        shares = [a for _, a in equal_split(Decimal("1000.50"), ["a", "b", "c"], fx.currency_unit("JPY"))]
+        self.assertEqual(sum(shares), Decimal("1000.50"))
+
 
 class CurrencyApiTest(unittest.TestCase):
     def setUp(self):
         fx._cached = None
-        self.fetch = patch("app.services.fx._fetch_rates", return_value=dict(RATES))
+        self.fetch = patch("app.services.fx._fetch_rates", return_value=(dict(RATES), 0))
         self.fetch.start()
 
         self.engine = create_engine(
@@ -124,7 +152,7 @@ class CurrencyApiTest(unittest.TestCase):
         expense = self._add("1000.00", "JPY").json()
         self.fetch.stop()
         fx._cached = None
-        with patch("app.services.fx._fetch_rates", return_value={**RATES, "JPY": Decimal("100")}):
+        with patch("app.services.fx._fetch_rates", return_value=({**RATES, "JPY": Decimal("100")}, 0)):
             res = self.client.put(
                 f"/api/groups/{self.group.id}/expenses/{expense['id']}",
                 json={"title": "Ramen", "amount": "2000.00", "currency": "JPY",
@@ -133,6 +161,21 @@ class CurrencyApiTest(unittest.TestCase):
             )
         self.fetch.start()
         self.assertEqual(res.json()["amount_usd"], 12.64)
+
+    def test_fractional_yen_rejected(self):
+        self.assertEqual(self._add("1000.50", "JPY").status_code, 400)
+
+    def test_edit_without_currency_change_skips_rate_fetch(self):
+        expense = self._add("1000.00", "JPY").json()
+        fx._cached = None
+        with patch("app.services.fx._fetch_rates", side_effect=OSError("down")):
+            res = self.client.put(
+                f"/api/groups/{self.group.id}/expenses/{expense['id']}",
+                json={"title": "Ramen", "amount": "1200.00", "currency": "JPY",
+                      "paid_by": self.a.id, "split_type": "EQUAL"},
+                headers=self._auth(self.a),
+            )
+        self.assertEqual(res.status_code, 200, res.text)
 
     def test_unsupported_currency_rejected(self):
         self.assertEqual(self._add("10.00", "GBP").status_code, 422)

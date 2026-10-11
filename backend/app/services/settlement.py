@@ -9,14 +9,20 @@ from app.services.fx import shares_to_usd
 CENT = Decimal("0.01")
 
 
-def equal_split(total: Decimal, member_ids: list[str]) -> list[tuple[str, Decimal]]:
+def equal_split(
+    total: Decimal, member_ids: list[str], unit: Decimal = CENT
+) -> list[tuple[str, Decimal]]:
     total = total.quantize(CENT)
+    # Yen/won expenses saved before whole amounts were enforced can hold cents;
+    # those keep splitting by the cent so the shares still add up.
+    if total % unit:
+        unit = CENT
     n = len(member_ids)
-    base = (total / n).quantize(CENT, rounding="ROUND_DOWN")
-    remainder_cents = int((total - base * n) / CENT)
+    base = (total / n).quantize(unit, rounding="ROUND_DOWN")
+    remainder_units = int((total - base * n) / unit)
     shares: list[tuple[str, Decimal]] = []
     for i, user_id in enumerate(member_ids):
-        share = base + (CENT if i < remainder_cents else Decimal("0"))
+        share = base + (unit if i < remainder_units else Decimal("0"))
         shares.append((user_id, share))
     return shares
 
