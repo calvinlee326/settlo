@@ -115,7 +115,7 @@ export default function SettingsPage() {
         >
           {CURRENCIES.map((c) => (
             <option key={c.code} value={c.code}>
-              {c.code} — {c.label}
+              {c.flag} {c.code} — {c.label}
             </option>
           ))}
         </select>

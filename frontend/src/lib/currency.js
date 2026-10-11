@@ -5,13 +5,13 @@ import { persist } from 'zustand/middleware';
 export const BASE_CURRENCY = 'USD';
 
 export const CURRENCIES = [
-  { code: 'USD', label: 'US Dollar' },
-  { code: 'TWD', label: 'New Taiwan Dollar' },
-  { code: 'JPY', label: 'Japanese Yen' },
-  { code: 'CNY', label: 'Chinese Yuan (RMB)' },
-  { code: 'KRW', label: 'Korean Won' },
-  { code: 'THB', label: 'Thai Baht' },
-  { code: 'EUR', label: 'Euro' },
+  { code: 'USD', flag: '🇺🇸', label: 'US Dollar' },
+  { code: 'TWD', flag: '🇹🇼', label: 'New Taiwan Dollar' },
+  { code: 'JPY', flag: '🇯🇵', label: 'Japanese Yen' },
+  { code: 'CNY', flag: '🇨🇳', label: 'Chinese Yuan (RMB)' },
+  { code: 'KRW', flag: '🇰🇷', label: 'Korean Won' },
+  { code: 'THB', flag: '🇹🇭', label: 'Thai Baht' },
+  { code: 'EUR', flag: '🇪🇺', label: 'Euro' },
 ];
 
 const CODES = new Set(CURRENCIES.map((c) => c.code));
