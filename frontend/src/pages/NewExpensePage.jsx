@@ -6,6 +6,7 @@ import useAuthStore from '../store/authStore';
 import Button from '../components/Button';
 import ErrorMessage from '../components/ErrorMessage';
 import { SkeletonList } from '../components/LoadingSpinner';
+import { BASE_CURRENCY, CURRENCIES, formatMoney, useMoney } from '../lib/currency';
 
 export default function NewExpensePage() {
   const { id, expenseId } = useParams();
@@ -20,6 +21,8 @@ export default function NewExpensePage() {
   const members = useMemo(() => group?.members ?? [], [group]);
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
+  const [currency, setCurrency] = useState(BASE_CURRENCY);
+  const { rates, format } = useMoney();
   const [paidBy, setPaidBy] = useState('');
   const [splitType, setSplitType] = useState('EQUAL');
   const [customSplits, setCustomSplits] = useState({});
@@ -42,6 +45,7 @@ export default function NewExpensePage() {
     } else if (expense) {
       setTitle(expense.title);
       setAmount(expense.amount.toFixed(2));
+      setCurrency(expense.currency);
       setPaidBy(expense.paid_by);
       setSplitType(expense.split_type);
       setParticipants(expense.splits.map((s) => s.user_id));
@@ -73,6 +77,15 @@ export default function NewExpensePage() {
   }, [id, expenseId, isEdit]);
 
   const totalAmount = parseFloat(amount) || 0;
+  // An edit keeps the rate locked when the expense was added unless its
+  // currency changes; mirror that so the preview matches what gets saved.
+  const original = expenses?.find((e) => e.id === expenseId);
+  const rate =
+    original?.currency === currency
+      ? original.fx_rate
+      : currency === BASE_CURRENCY
+        ? 1
+        : rates?.[currency];
   const customTotal = useMemo(
     () =>
       members.reduce(
@@ -130,6 +143,7 @@ export default function NewExpensePage() {
       const body = {
         title: title.trim(),
         amount: totalAmount.toFixed(2),
+        currency,
         paid_by: paidBy,
         split_type: splitType,
       };
@@ -183,10 +197,17 @@ export default function NewExpensePage() {
           <label htmlFor="expense-amount" className="mb-1.5 block text-[13px] font-medium text-muted">
             Amount
           </label>
-          <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted">
-              $
-            </span>
+          <div className="flex gap-2">
+            <select
+              aria-label="Currency"
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value)}
+              className="input w-24 shrink-0"
+            >
+              {CURRENCIES.map((c) => (
+                <option key={c.code} value={c.code}>{c.code}</option>
+              ))}
+            </select>
             <input
               id="expense-amount"
               type="number"
@@ -196,9 +217,18 @@ export default function NewExpensePage() {
               placeholder="0.00"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="input pl-8"
+              className="input flex-1"
             />
           </div>
+          {currency !== BASE_CURRENCY && (
+            <p className="mt-1.5 text-[12px] tabular-nums text-muted">
+              {rate
+                ? `1 USD = ${rate.toLocaleString('en-US', { maximumFractionDigits: 4 })} ${currency}${
+                    totalAmount > 0 ? ` · ≈ ${format(totalAmount / rate)}` : ''
+                  }`
+                : 'Loading exchange rate…'}
+            </p>
+          )}
         </div>
 
         <div>
@@ -268,7 +298,7 @@ export default function NewExpensePage() {
                   </span>
                   <span className="text-sm tabular-nums text-muted">
                     {checked && equalShares[m.id] !== undefined
-                      ? `$${equalShares[m.id].toFixed(2)}`
+                      ? formatMoney(equalShares[m.id], currency)
                       : '—'}
                   </span>
                 </label>
@@ -278,7 +308,7 @@ export default function NewExpensePage() {
               {participants.length === 0
                 ? 'Pick at least one person'
                 : totalAmount > 0
-                  ? `$${totalAmount.toFixed(2)} split ${participants.length} way${participants.length === 1 ? '' : 's'}`
+                  ? `${formatMoney(totalAmount, currency)} split ${participants.length} way${participants.length === 1 ? '' : 's'}`
                   : `Split ${participants.length} way${participants.length === 1 ? '' : 's'}`}
             </p>
           </fieldset>
@@ -291,10 +321,7 @@ export default function NewExpensePage() {
                 <span className="flex-1 truncate text-[15px] text-ink-soft">
                   {m.id === user?.id ? 'You' : m.username || 'Member'}
                 </span>
-                <div className="relative w-28">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted">
-                    $
-                  </span>
+                <div className="w-28">
                   <input
                     type="number"
                     inputMode="decimal"
@@ -308,7 +335,7 @@ export default function NewExpensePage() {
                         [m.id]: e.target.value,
                       }))
                     }
-                    className="input py-2 pl-7 pr-2 text-sm"
+                    className="input py-2 pl-3 pr-2 text-sm"
                   />
                 </div>
               </div>
@@ -319,10 +346,10 @@ export default function NewExpensePage() {
               }`}
             >
               {customValid
-                ? `Adds up to $${totalAmount.toFixed(2)}`
+                ? `Adds up to ${formatMoney(totalAmount, currency)}`
                 : customDiff > 0
-                  ? `$${customDiff.toFixed(2)} left to assign`
-                  : `$${Math.abs(customDiff).toFixed(2)} over the total`}
+                  ? `${formatMoney(customDiff, currency)} left to assign`
+                  : `${formatMoney(Math.abs(customDiff), currency)} over the total`}
             </div>
           </div>
         )}
@@ -334,8 +361,8 @@ export default function NewExpensePage() {
             </h2>
             {history.map((revision) => (
               <p key={revision.id} className="text-[13px] text-muted">
-                Was &ldquo;{revision.snapshot.title}&rdquo; for $
-                {revision.snapshot.amount.toFixed(2)} &middot; changed by{' '}
+                Was &ldquo;{revision.snapshot.title}&rdquo; for{' '}
+                {formatMoney(revision.snapshot.amount, revision.snapshot.currency)} &middot; changed by{' '}
                 {revision.changed_by_username || 'someone'} on{' '}
                 {new Date(revision.changed_at).toLocaleDateString()}
               </p>

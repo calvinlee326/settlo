@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session, joinedload
 from app.core.security import get_current_user
 from app.database import get_db
 from app.models.expense import Expense, ExpenseRevision, ExpenseSplit, SplitType
-from app.services.settlement import equal_split
+from app.services import fx
+from app.services.settlement import add_splits, equal_split
 from app.models.group import Group, Membership
 from app.models.user import User
 from app.routers.groups import get_group_or_404, require_membership
@@ -24,6 +25,8 @@ def _expense_out(expense: Expense) -> ExpenseOut:
         title=expense.title,
         amount=float(expense.amount),
         currency=expense.currency,
+        fx_rate=float(expense.fx_rate),
+        amount_usd=float(expense.amount_usd),
         split_type=expense.split_type,
         paid_by=expense.paid_by,
         paid_by_username=expense.payer.username if expense.payer else None,
@@ -104,6 +107,8 @@ def create_expense(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    # Fetch before taking the group lock; a cold cache means a network call.
+    rate = fx.rate_for(body.currency)
     group = get_group_or_404(db, group_id, lock=True)
     if group.settled_at is not None:
         raise HTTPException(
@@ -131,14 +136,15 @@ def create_expense(
         paid_by=body.paid_by,
         title=body.title.strip(),
         amount=body.amount.quantize(CENT),
-        currency=body.currency.upper(),
+        currency=body.currency,
+        fx_rate=rate,
+        amount_usd=fx.to_usd(body.amount.quantize(CENT), rate),
         split_type=body.split_type,
         created_by=current_user.id,
     )
     db.add(expense)
     db.flush()
-    for user_id, amount in splits:
-        db.add(ExpenseSplit(expense_id=expense.id, user_id=user_id, amount=amount))
+    add_splits(db, expense, splits)
     db.commit()
     db.refresh(expense)
     return _expense_out(expense)
@@ -211,16 +217,19 @@ def update_expense(
         expense_id=expense.id, changed_by=current_user.id,
         snapshot=_expense_out(expense).model_dump(mode="json"),
     ))
+    # Keep the rate from when the expense was added unless its currency changes.
+    if body.currency != expense.currency:
+        expense.fx_rate = fx.rate_for(body.currency)
     expense.title = body.title.strip()
     expense.amount = body.amount.quantize(CENT)
-    expense.currency = body.currency.upper()
+    expense.currency = body.currency
+    expense.amount_usd = fx.to_usd(expense.amount, expense.fx_rate)
     expense.split_type = body.split_type
     expense.paid_by = body.paid_by
     db.query(ExpenseSplit).filter(ExpenseSplit.expense_id == expense_id).delete(
         synchronize_session=False
     )
-    for user_id, amount in splits:
-        db.add(ExpenseSplit(expense_id=expense.id, user_id=user_id, amount=amount))
+    add_splits(db, expense, splits)
     db.commit()
     db.refresh(expense)
     return _expense_out(expense)

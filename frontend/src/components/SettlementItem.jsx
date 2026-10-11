@@ -1,7 +1,9 @@
 import Avatar from './Avatar';
 import Button from './Button';
+import { useMoney } from '../lib/currency';
 
 export default function SettlementItem({ settlement, onPay, onReverse, paying, style }) {
+  const { format } = useMoney();
   return (
     <div
       style={style}
@@ -34,7 +36,7 @@ export default function SettlementItem({ settlement, onPay, onReverse, paying, s
             settlement.is_paid ? 'line-through' : ''
           }`}
         >
-          ${settlement.amount.toFixed(2)}
+          {format(settlement.amount)}
         </p>
         {settlement.recorded_by_username && (
           <p className="text-xs text-muted">

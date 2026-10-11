@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import api from '../api/axios';
 import SettlementItem from './SettlementItem';
+import { formatMoney, useMoney } from '../lib/currency';
 
 export default function PaymentHistoryItem({ group, canDelete, onDeleted }) {
   const [open, setOpen] = useState(false);
+  const { format } = useMoney();
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -56,7 +58,7 @@ export default function PaymentHistoryItem({ group, canDelete, onDeleted }) {
         </div>
         <div className="flex items-center gap-3">
           <span className="text-[15px] font-semibold tabular-nums text-ink-soft">
-            ${(group.total ?? 0).toFixed(2)}
+            {format(group.total ?? 0)}
           </span>
           <span className="text-muted">{open ? '▾' : '▸'}</span>
         </div>
@@ -85,7 +87,7 @@ export default function PaymentHistoryItem({ group, canDelete, onDeleted }) {
                         </span>
                       </span>
                       <span className="tabular-nums text-ink-soft">
-                        ${e.amount.toFixed(2)}
+                        {formatMoney(e.amount, e.currency)}
                       </span>
                     </div>
                   ))}

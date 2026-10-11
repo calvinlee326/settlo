@@ -85,7 +85,7 @@ def _compute_balances(db: Session, group_id: str) -> dict[str, Decimal]:
     expenses = db.query(Expense).filter(Expense.group_id == group_id).all()
     expense_ids = [e.id for e in expenses]
     for e in expenses:
-        balances[e.paid_by] += Decimal(e.amount)
+        balances[e.paid_by] += Decimal(e.amount_usd)
     if expense_ids:
         splits = (
             db.query(ExpenseSplit)
@@ -93,7 +93,7 @@ def _compute_balances(db: Session, group_id: str) -> dict[str, Decimal]:
             .all()
         )
         for s in splits:
-            balances[s.user_id] -= Decimal(s.amount)
+            balances[s.user_id] -= Decimal(s.amount_usd)
 
     # Completed settlements reduce outstanding debt
     paid = (

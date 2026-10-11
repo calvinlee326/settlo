@@ -6,6 +6,7 @@ import ErrorMessage from '../components/ErrorMessage';
 import GroupCard from '../components/GroupCard';
 import { SkeletonList } from '../components/LoadingSpinner';
 import SetHandleForm from '../components/SetHandleForm';
+import { useMoney } from '../lib/currency';
 import useAuthStore from '../store/authStore';
 
 // Cap the entry stagger: past this index every card animates together, so a
@@ -17,6 +18,7 @@ export default function HomePage() {
   const { data: friendsData, error: friendsError } = useSWR('/friends');
   const { data: invites = [] } = useSWR('/group-invitations');
   const [expenseGroupId, setExpenseGroupId] = useState('');
+  const { format } = useMoney();
   // Warm the next screen's data on hover/touch so it opens from cache.
   const [warmKey, setWarmKey] = useState(null);
   useSWR(warmKey);
@@ -92,7 +94,7 @@ export default function HomePage() {
                 You owe
               </p>
               <p className="mt-1 text-[22px] font-semibold tabular-nums text-ink">
-                ${owe.toFixed(2)}
+                {format(owe)}
               </p>
             </div>
             <div className="card p-4">
@@ -100,7 +102,7 @@ export default function HomePage() {
                 You&rsquo;re owed
               </p>
               <p className="mt-1 text-[22px] font-semibold tabular-nums text-ink">
-                ${owed.toFixed(2)}
+                {format(owed)}
               </p>
             </div>
           </div>
@@ -161,8 +163,8 @@ export default function HomePage() {
               </span>
               <span className="shrink-0 text-[13px] font-semibold tabular-nums text-ink">
                 {item.balance > 0
-                  ? `You're owed $${item.balance.toFixed(2)}`
-                  : `You owe $${Math.abs(item.balance).toFixed(2)}`}
+                  ? `You're owed ${format(item.balance)}`
+                  : `You owe ${format(Math.abs(item.balance))}`}
               </span>
             </Link>
           ))}

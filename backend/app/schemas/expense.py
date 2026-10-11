@@ -4,6 +4,7 @@ from decimal import Decimal
 from pydantic import BaseModel, Field
 
 from app.models.expense import SplitType
+from app.services.fx import Currency
 
 
 class SplitInput(BaseModel):
@@ -14,7 +15,7 @@ class SplitInput(BaseModel):
 class ExpenseCreate(BaseModel):
     title: str = Field(min_length=1, max_length=100)
     amount: Decimal = Field(gt=0, decimal_places=2)
-    currency: str = Field(default="USD", min_length=3, max_length=3)
+    currency: Currency = "USD"
     paid_by: str
     split_type: SplitType = SplitType.EQUAL
     splits: list[SplitInput] | None = None
@@ -33,6 +34,8 @@ class ExpenseOut(BaseModel):
     title: str
     amount: float
     currency: str
+    fx_rate: float
+    amount_usd: float
     split_type: SplitType
     paid_by: str
     paid_by_username: str | None

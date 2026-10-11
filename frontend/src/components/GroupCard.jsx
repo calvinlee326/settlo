@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import useSWR from 'swr';
+import { useMoney } from '../lib/currency';
 
 export default function GroupCard({ group, style }) {
   // Warm the group screen's data on hover/touch so it opens from cache. Unmounting
   // on leave stops refetches; a started request still lands in the cache.
   const [warm, setWarm] = useState(false);
+  const { format } = useMoney();
   useSWR(warm ? `/groups/${group.id}` : null);
   useSWR(warm ? `/groups/${group.id}/expenses/` : null);
 
@@ -43,8 +45,8 @@ export default function GroupCard({ group, style }) {
             {Math.abs(group.my_balance) < 0.005
               ? 'Settled up'
               : group.my_balance > 0
-                ? `You're owed $${group.my_balance.toFixed(2)}`
-                : `You owe $${Math.abs(group.my_balance).toFixed(2)}`}
+                ? `You're owed ${format(group.my_balance)}`
+                : `You owe ${format(Math.abs(group.my_balance))}`}
           </p>
         )}
       </div>

@@ -42,6 +42,7 @@ class NullableGroupIdTest(unittest.TestCase):
             paid_by=u.id,
             title="Coffee",
             amount=Decimal("4.00"),
+            amount_usd=Decimal("4.00"),
             created_by=u.id,
         )
         self.db.add(e)

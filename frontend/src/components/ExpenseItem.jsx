@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
 import Avatar from './Avatar';
+import { formatMoney, useMoney } from '../lib/currency';
 
 export default function ExpenseItem({ expense, canDelete, editTo, onDelete, style }) {
+  const { currency, format } = useMoney();
   return (
     <div
       style={style}
@@ -19,8 +21,13 @@ export default function ExpenseItem({ expense, canDelete, editTo, onDelete, styl
       </div>
       <div className="text-right">
         <p className="text-[15px] font-semibold tabular-nums text-ink">
-          ${expense.amount.toFixed(2)}
+          {formatMoney(expense.amount, expense.currency)}
         </p>
+        {expense.currency !== currency && (
+          <p className="text-[13px] tabular-nums text-muted">
+            &asymp; {format(expense.amount_usd)}
+          </p>
+        )}
         <p className="text-[13px] text-muted">
           {expense.split_type === 'EQUAL' ? 'Split equally' : 'Custom split'}
         </p>

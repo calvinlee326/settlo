@@ -8,6 +8,7 @@ import Button from '../components/Button';
 import ErrorMessage from '../components/ErrorMessage';
 import ExpenseItem from '../components/ExpenseItem';
 import { SkeletonList } from '../components/LoadingSpinner';
+import { useMoney } from '../lib/currency';
 import { isValidHandle, normalizeHandle } from '../lib/handle';
 
 // Cap the entry stagger: past this index every card animates together, so a
@@ -18,6 +19,7 @@ export default function GroupDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
+  const { format } = useMoney();
   const { data: group, error: groupError, mutate: mutateGroup } = useSWR(`/groups/${id}`);
   const {
     data: expensesData,
@@ -190,7 +192,7 @@ export default function GroupDetailPage() {
 
   const isCreator = user?.id === group.created_by;
   const isSettled = Boolean(group.settled_at);
-  const total = expenses.reduce((sum, e) => sum + e.amount, 0);
+  const total = expenses.reduce((sum, e) => sum + e.amount_usd, 0);
 
   return (
     <div className="space-y-5">
@@ -267,7 +269,7 @@ export default function GroupDetailPage() {
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-medium text-ink">Expenses</h2>
         <span className="text-sm font-medium tabular-nums text-muted">
-          Total ${total.toFixed(2)}
+          Total {format(total)}
         </span>
       </div>
 

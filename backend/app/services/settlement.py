@@ -4,6 +4,7 @@ from decimal import Decimal
 from sqlalchemy import func, or_
 
 from app.models.expense import Expense, ExpenseSplit, Settlement
+from app.services.fx import shares_to_usd
 
 CENT = Decimal("0.01")
 
@@ -18,6 +19,14 @@ def equal_split(total: Decimal, member_ids: list[str]) -> list[tuple[str, Decima
         share = base + (CENT if i < remainder_cents else Decimal("0"))
         shares.append((user_id, share))
     return shares
+
+
+def add_splits(db, expense: Expense, splits: list[tuple[str, Decimal]]) -> None:
+    usd = shares_to_usd([amount for _, amount in splits], expense.fx_rate)
+    for (user_id, amount), amount_usd in zip(splits, usd):
+        db.add(ExpenseSplit(
+            expense_id=expense.id, user_id=user_id, amount=amount, amount_usd=amount_usd
+        ))
 
 
 def calculate_settlements(balances: dict[str, Decimal]) -> list[dict]:
@@ -73,7 +82,7 @@ def net_balances_by_group(
     balances: dict[str, Decimal] = {gid: Decimal("0") for gid in group_ids}
 
     paid = (
-        db.query(Expense.group_id, func.sum(Expense.amount))
+        db.query(Expense.group_id, func.sum(Expense.amount_usd))
         .filter(Expense.group_id.in_(group_ids), Expense.paid_by == user_id)
         .group_by(Expense.group_id)
         .all()
@@ -82,7 +91,7 @@ def net_balances_by_group(
         balances[gid] += Decimal(total or 0)
 
     owed = (
-        db.query(Expense.group_id, func.sum(ExpenseSplit.amount))
+        db.query(Expense.group_id, func.sum(ExpenseSplit.amount_usd))
         .join(Expense, Expense.id == ExpenseSplit.expense_id)
         .filter(Expense.group_id.in_(group_ids), ExpenseSplit.user_id == user_id)
         .group_by(Expense.group_id)

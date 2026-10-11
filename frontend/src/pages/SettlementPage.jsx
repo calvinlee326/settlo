@@ -6,6 +6,7 @@ import Button from '../components/Button';
 import ErrorMessage from '../components/ErrorMessage';
 import { SkeletonList } from '../components/LoadingSpinner';
 import SettlementItem from '../components/SettlementItem';
+import { useMoney } from '../lib/currency';
 
 // Cap the entry stagger: past this index every card animates together, so a
 // long list finishes in ~550ms instead of growing 50ms per row.
@@ -16,6 +17,7 @@ export default function SettlementPage() {
   const navigate = useNavigate();
   const { data, error: loadError, mutate } = useSWR(`/groups/${id}/settlements/`);
   const [confirming, setConfirming] = useState(false);
+  const { format } = useMoney();
   const [pendingId, setPendingId] = useState(null);
   const [error, setError] = useState('');
 
@@ -98,8 +100,8 @@ export default function SettlementPage() {
                       : 'font-normal text-muted'
                 }`}
               >
-                {b.balance > 0.004 ? '+' : b.balance < -0.004 ? '-' : ''}$
-                {Math.abs(b.balance).toFixed(2)}
+                {b.balance > 0.004 ? '+' : b.balance < -0.004 ? '-' : ''}
+                {format(Math.abs(b.balance))}
               </span>
             </div>
           ))}
@@ -159,7 +161,7 @@ export default function SettlementPage() {
                 <span className="text-ink">
                   {s.from_username || 'Someone'} &rarr; {s.to_username || 'someone'}
                 </span>{' '}
-                ${s.amount.toFixed(2)} &middot; undone by{' '}
+                {format(s.amount)} &middot; undone by{' '}
                 {s.reversed_by_username || 'someone'} on{' '}
                 {new Date(s.reversed_at).toLocaleDateString()}
               </div>

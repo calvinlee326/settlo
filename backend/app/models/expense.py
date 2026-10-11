@@ -25,6 +25,9 @@ class Expense(Base):
     title: Mapped[str] = mapped_column(String(100), nullable=False)
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     currency: Mapped[str] = mapped_column(String(3), default="USD")
+    # Units of `currency` per 1 USD, locked when the expense is added.
+    fx_rate: Mapped[Decimal] = mapped_column(Numeric(18, 6), nullable=False, default=Decimal("1"))
+    amount_usd: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     split_type: Mapped[SplitType] = mapped_column(
         Enum(SplitType, name="splittype"), default=SplitType.EQUAL
     )
@@ -44,6 +47,7 @@ class ExpenseSplit(Base):
     expense_id: Mapped[str] = mapped_column(String(36), ForeignKey("expenses.id"))
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    amount_usd: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
 
     expense: Mapped["Expense"] = relationship(back_populates="splits")
     user = relationship("User")
