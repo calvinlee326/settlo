@@ -6,7 +6,7 @@ import useAuthStore from '../store/authStore';
 import Button from '../components/Button';
 import ErrorMessage from '../components/ErrorMessage';
 import { SkeletonList } from '../components/LoadingSpinner';
-import { BASE_CURRENCY, CURRENCIES, formatMoney, useMoney } from '../lib/currency';
+import { BASE_CURRENCY, CURRENCIES, currencyStep, formatMoney, useMoney } from '../lib/currency';
 
 export default function NewExpensePage() {
   const { id, expenseId } = useParams();
@@ -77,6 +77,7 @@ export default function NewExpensePage() {
   }, [id, expenseId, isEdit]);
 
   const totalAmount = parseFloat(amount) || 0;
+  const step = currencyStep(currency);
   // An edit keeps the rate locked when the expense was added unless its
   // currency changes; mirror that so the preview matches what gets saved.
   const original = expenses?.find((e) => e.id === expenseId);
@@ -97,18 +98,20 @@ export default function NewExpensePage() {
   const customDiff = +(totalAmount - customTotal).toFixed(2);
   const customValid = totalAmount > 0 && Math.abs(customDiff) < 0.005;
 
-  // Mirrors the backend's equal_split: floor to the cent, then hand the
-  // leftover cents to the first participants in member order.
+  // Mirrors the backend's equal_split: floor to the currency's smallest unit
+  // (cent, or whole yen/won), then hand the leftover units to the first
+  // participants in member order.
   const equalShares = useMemo(() => {
     const chosen = members.filter((m) => participants.includes(m.id));
     if (chosen.length === 0 || !(totalAmount > 0)) return {};
-    const cents = Math.round(totalAmount * 100);
-    const base = Math.floor(cents / chosen.length);
-    const extra = cents - base * chosen.length;
+    const perUnit = Math.round(1 / step);
+    const units = Math.round(totalAmount * perUnit);
+    const base = Math.floor(units / chosen.length);
+    const extra = units - base * chosen.length;
     return Object.fromEntries(
-      chosen.map((m, i) => [m.id, (base + (i < extra ? 1 : 0)) / 100])
+      chosen.map((m, i) => [m.id, (base + (i < extra ? 1 : 0)) / perUnit])
     );
-  }, [members, participants, totalAmount]);
+  }, [members, participants, totalAmount, step]);
 
   const toggleParticipant = (memberId) => {
     setParticipantsTouched(true);
@@ -211,10 +214,10 @@ export default function NewExpensePage() {
             <input
               id="expense-amount"
               type="number"
-              inputMode="decimal"
-              min="0.01"
-              step="0.01"
-              placeholder="0.00"
+              inputMode={step === 1 ? 'numeric' : 'decimal'}
+              min={step}
+              step={step}
+              placeholder={step === 1 ? '0' : '0.00'}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               className="input flex-1"
@@ -326,8 +329,8 @@ export default function NewExpensePage() {
                     type="number"
                     inputMode="decimal"
                     min="0"
-                    step="0.01"
-                    placeholder="0.00"
+                    step={step}
+                    placeholder={step === 1 ? '0' : '0.00'}
                     value={customSplits[m.id] ?? ''}
                     onChange={(e) =>
                       setCustomSplits((prev) => ({

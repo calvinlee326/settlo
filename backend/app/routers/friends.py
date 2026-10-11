@@ -140,12 +140,13 @@ def list_friends(
     if not friend_ids:
         return []
     users = db.query(User).filter(User.id.in_(friend_ids)).all()
+    balances = friends_svc.friend_balances(db, current_user.id, [u.id for u in users])
     return [
         FriendOut(
             id=u.id,
             username=u.username,
             handle=u.handle,
-            net_balance=float(friends_svc.friend_balance(db, current_user.id, u.id)),
+            net_balance=float(balances[u.id]),
         )
         for u in users
     ]

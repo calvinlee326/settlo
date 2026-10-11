@@ -6,7 +6,7 @@ import useAuthStore from '../store/authStore';
 import Button from '../components/Button';
 import ErrorMessage from '../components/ErrorMessage';
 import { SkeletonList } from '../components/LoadingSpinner';
-import { BASE_CURRENCY, CURRENCIES, useMoney } from '../lib/currency';
+import { BASE_CURRENCY, CURRENCIES, currencyStep, useMoney } from '../lib/currency';
 
 export default function NewDirectExpensePage() {
   const navigate = useNavigate();
@@ -38,6 +38,7 @@ export default function NewDirectExpensePage() {
   }, [friends, selected, user]);
 
   const totalAmount = parseFloat(amount) || 0;
+  const step = currencyStep(currency);
   const rate = currency === BASE_CURRENCY ? 1 : rates?.[currency];
 
   const handleSubmit = async (event) => {
@@ -111,10 +112,10 @@ export default function NewDirectExpensePage() {
             </select>
             <input
               type="number"
-              inputMode="decimal"
-              min="0.01"
-              step="0.01"
-              placeholder="0.00"
+              inputMode={step === 1 ? 'numeric' : 'decimal'}
+              min={step}
+              step={step}
+              placeholder={step === 1 ? '0' : '0.00'}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               className="input flex-1"
