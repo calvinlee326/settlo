@@ -202,10 +202,10 @@ export default function NewExpensePage() {
               aria-label="Currency"
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}
-              className="input w-24 shrink-0"
+              className="input w-32 shrink-0"
             >
               {CURRENCIES.map((c) => (
-                <option key={c.code} value={c.code}>{c.code}</option>
+                <option key={c.code} value={c.code}>{c.flag} {c.code}</option>
               ))}
             </select>
             <input
