@@ -25,6 +25,10 @@ Support: [ko-fi.com/chunchenglee](https://ko-fi.com/chunchenglee)
 - **Backend:** Python 3.10+, FastAPI, SQLAlchemy, Alembic, SQLite (dev) / PostgreSQL (prod), JWT auth, Google ID token verification (PyJWT)
 - **Frontend:** React 18, Vite, Tailwind CSS, React Router v6, Zustand, Axios, Google Identity Services (PWA-ready)
 
+## How This Was Built
+
+Settlo is built with [Claude Code](https://claude.com/claude-code) as a pair programmer. Each feature starts as a design discussion that becomes a written spec and a step-by-step plan ([`docs/superpowers/`](docs/superpowers/)). It is then implemented test-first on its own branch and merged through a reviewed pull request. [#21](https://github.com/calvinlee326/settlo/pull/21) is a typical one: it fixes a latent rounding bug and cuts the friend list from 33 queries to 13, with a test that fails on the old code.
+
 ## Quick Start
 
 ### Backend
