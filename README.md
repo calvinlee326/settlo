@@ -14,6 +14,7 @@ Support: [ko-fi.com/chunchenglee](https://ko-fi.com/chunchenglee)
 - **Groups** — create a group, add expenses (split equally between any subset of members, or with custom amounts), edit or remove them, and settle up with the fewest transactions.
 - **Balances at a glance** — the home screen shows what you owe or are owed in each group, plus an overall net figure.
 - **Friends & direct expenses** — add friends by ID, log one-on-one expenses outside any group, and track a running balance per friend.
+- **Multi-currency** — enter expenses in USD, TWD, JPY, CNY, KRW, THB or EUR. Each expense locks in that day's exchange rate, balances settle exactly across currencies, yen and won split in whole units, and each user picks the currency totals are shown in (Settings → Show totals in).
 - **Invitations** — invite someone to a group by ID (a pending invite appears on their home screen), by sharing the group's invite link, or by adding an existing friend.
 - **Member management** — the creator can remove members and any member can leave a group; removal is blocked while that member still has expenses or settlements.
 - **Payment history** — settled groups are archived to a dedicated history page.
@@ -24,6 +25,10 @@ Support: [ko-fi.com/chunchenglee](https://ko-fi.com/chunchenglee)
 
 - **Backend:** Python 3.10+, FastAPI, SQLAlchemy, Alembic, SQLite (dev) / PostgreSQL (prod), JWT auth, Google ID token verification (PyJWT)
 - **Frontend:** React 18, Vite, Tailwind CSS, React Router v6, Zustand, Axios, Google Identity Services (PWA-ready)
+
+## How This Was Built
+
+Settlo is built with [Claude Code](https://claude.com/claude-code) as a pair programmer. Each feature starts as a design discussion that becomes a written spec and a step-by-step plan ([`docs/superpowers/`](docs/superpowers/)). It is then implemented test-first on its own branch and merged through a reviewed pull request. [#21](https://github.com/calvinlee326/settlo/pull/21) is a typical one: it fixes a latent rounding bug and cuts the friend list from 33 queries to 13, with a test that fails on the old code.
 
 ## Quick Start
 
