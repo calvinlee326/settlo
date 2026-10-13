@@ -14,6 +14,7 @@ Support: [ko-fi.com/chunchenglee](https://ko-fi.com/chunchenglee)
 - **Groups** — create a group, add expenses (split equally between any subset of members, or with custom amounts), edit or remove them, and settle up with the fewest transactions.
 - **Balances at a glance** — the home screen shows what you owe or are owed in each group, plus an overall net figure.
 - **Friends & direct expenses** — add friends by ID, log one-on-one expenses outside any group, and track a running balance per friend.
+- **Multi-currency** — enter expenses in USD, TWD, JPY, CNY, KRW, THB or EUR. Each expense locks in that day's exchange rate, balances settle exactly across currencies, yen and won split in whole units, and each user picks the currency totals are shown in (Settings → Show totals in).
 - **Invitations** — invite someone to a group by ID (a pending invite appears on their home screen), by sharing the group's invite link, or by adding an existing friend.
 - **Member management** — the creator can remove members and any member can leave a group; removal is blocked while that member still has expenses or settlements.
 - **Payment history** — settled groups are archived to a dedicated history page.
