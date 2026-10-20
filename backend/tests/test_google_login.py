@@ -53,9 +53,9 @@ class GoogleLoginTest(unittest.TestCase):
         self.db.close()
         self.engine.dispose()
 
-    def google_login(self, claims):
+    def google_login(self, claims, headers=None):
         with patch.object(auth, "verify_google_token", return_value=claims):
-            return self.client.post("/api/auth/google", json={"credential": "token"})
+            return self.client.post("/api/auth/google", json={"credential": "token"}, headers=headers)
 
     def test_new_google_account_is_named_from_google(self):
         response = self.google_login(google_claims())
@@ -85,6 +85,14 @@ class GoogleLoginTest(unittest.TestCase):
         statuses = [self.google_login(google_claims()).status_code for _ in range(30)]
 
         self.assertIn(429, statuses)
+
+    def test_one_visitor_behind_the_proxy_does_not_throttle_another(self):
+        for _ in range(30):
+            self.google_login(google_claims(), {"x-vercel-forwarded-for": "198.51.100.1"})
+
+        other = self.google_login(google_claims(), {"x-vercel-forwarded-for": "198.51.100.2"})
+
+        self.assertNotEqual(other.status_code, 429)
 
 
 
