@@ -21,7 +21,7 @@ class Friendship(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
     requester_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
-    addressee_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
+    addressee_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True)
     status: Mapped[FriendshipStatus] = mapped_column(
         Enum(FriendshipStatus, name="friendshipstatus"),
         default=FriendshipStatus.PENDING,

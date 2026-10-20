@@ -19,9 +19,9 @@ class Expense(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
     group_id: Mapped[str | None] = mapped_column(
-        String(36), ForeignKey("groups.id"), nullable=True
+        String(36), ForeignKey("groups.id"), nullable=True, index=True
     )
-    paid_by: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
+    paid_by: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True)
     title: Mapped[str] = mapped_column(String(100), nullable=False)
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     currency: Mapped[str] = mapped_column(String(3), default="USD")
@@ -44,8 +44,8 @@ class ExpenseSplit(Base):
     __tablename__ = "expense_splits"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
-    expense_id: Mapped[str] = mapped_column(String(36), ForeignKey("expenses.id"))
-    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
+    expense_id: Mapped[str] = mapped_column(String(36), ForeignKey("expenses.id"), index=True)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True)
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     amount_usd: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
 
@@ -58,7 +58,7 @@ class Settlement(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
     group_id: Mapped[str | None] = mapped_column(
-        String(36), ForeignKey("groups.id"), nullable=True
+        String(36), ForeignKey("groups.id"), nullable=True, index=True
     )
     from_user: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
     to_user: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))

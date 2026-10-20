@@ -21,7 +21,7 @@ class GroupInvitation(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
     group_id: Mapped[str] = mapped_column(String(36), ForeignKey("groups.id"))
-    invited_user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
+    invited_user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True)
     invited_by: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
     status: Mapped[GroupInvitationStatus] = mapped_column(
         Enum(GroupInvitationStatus, name="groupinvitationstatus"),
