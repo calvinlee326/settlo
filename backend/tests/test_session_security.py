@@ -1,6 +1,7 @@
 import os
 import sys
 import unittest
+from datetime import timedelta
 from pathlib import Path
 from unittest.mock import patch
 
@@ -16,7 +17,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.core.config import settings
 from app.database import Base, get_db
-from app.models.user import TokenBlacklist
+from app.models.user import TokenBlacklist, utcnow
 from app.routers import auth
 
 
@@ -103,6 +104,17 @@ class SessionSecurityTest(unittest.TestCase):
         self.assertEqual(self.client.post("/api/auth/logout").status_code, 200)
         self.client.cookies.set(auth.REFRESH_COOKIE_NAME, refresh_token)
         self.assertEqual(self.client.post("/api/auth/refresh").status_code, 401)
+
+    def test_logout_drops_revoked_tokens_that_have_expired(self):
+        self.db.add_all([
+            TokenBlacklist(token="expired", expired_at=utcnow() - timedelta(minutes=1)),
+            TokenBlacklist(token="live", expired_at=utcnow() + timedelta(days=1)),
+        ])
+        self.db.commit()
+
+        self.client.post("/api/auth/logout")
+
+        self.assertEqual({row.token for row in self.db.query(TokenBlacklist)}, {"live"})
 
 
 if __name__ == "__main__":

@@ -81,6 +81,11 @@ class GoogleLoginTest(unittest.TestCase):
 
         self.assertEqual(self.google_login(google_claims()).status_code, 403)
 
+    def test_burst_of_sign_ins_from_one_client_is_throttled(self):
+        statuses = [self.google_login(google_claims()).status_code for _ in range(30)]
+
+        self.assertIn(429, statuses)
+
 
 
 
