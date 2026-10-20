@@ -19,7 +19,7 @@ function Layout({ children }) {
     <div className="min-h-screen">
       <Navbar />
       <main
-        className="page-enter mx-auto max-w-[480px] px-4 pt-[76px]"
+        className="mx-auto max-w-[480px] px-4 pt-[76px]"
         style={{ paddingBottom: 'calc(7rem + env(safe-area-inset-bottom))' }}
       >
         {children}

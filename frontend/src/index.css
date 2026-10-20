@@ -201,7 +201,7 @@
   }
 
   .stagger-item {
-    animation: fadeSlideUp 0.35s ease-out both;
+    animation: fadeSlideUp 0.2s ease-out both;
   }
 
   /* ── Skeleton loading ───────────────────────────── */

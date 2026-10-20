@@ -12,7 +12,7 @@ import { useMoney } from '../lib/currency';
 import { isValidHandle, normalizeHandle } from '../lib/handle';
 
 // Cap the entry stagger: past this index every card animates together, so a
-// long list finishes in ~550ms instead of growing 50ms per row.
+// long list finishes in ~300ms instead of growing 25ms per row.
 const STAGGER_CAP = 4;
 
 export default function GroupDetailPage() {
@@ -345,7 +345,7 @@ export default function GroupDetailPage() {
             <ExpenseItem
               key={expense.id}
               expense={expense}
-              style={{ animationDelay: `${Math.min(i, STAGGER_CAP) * 50}ms` }}
+              style={{ animationDelay: `${Math.min(i, STAGGER_CAP) * 25}ms` }}
               canDelete={!isSettled && (expense.created_by === user?.id || isCreator)}
               editTo={
                 !isSettled && (expense.created_by === user?.id || isCreator)

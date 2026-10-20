@@ -9,7 +9,7 @@ import SettlementItem from '../components/SettlementItem';
 import { useMoney } from '../lib/currency';
 
 // Cap the entry stagger: past this index every card animates together, so a
-// long list finishes in ~550ms instead of growing 50ms per row.
+// long list finishes in ~300ms instead of growing 25ms per row.
 const STAGGER_CAP = 4;
 
 export default function SettlementPage() {
@@ -121,7 +121,7 @@ export default function SettlementPage() {
             <SettlementItem
               key={settlement.id}
               settlement={settlement}
-              style={{ animationDelay: `${Math.min(i, STAGGER_CAP) * 50}ms` }}
+              style={{ animationDelay: `${Math.min(i, STAGGER_CAP) * 25}ms` }}
               paying={pendingId === settlement.id}
               onPay={() =>
                 act(settlement.id, 'pay', 'Failed to record this payment')
