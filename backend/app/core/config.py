@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     REFRESH_COOKIE_SECURE: bool = True
-    REFRESH_COOKIE_SAMESITE: Literal["lax", "strict", "none"] = "none"
+    REFRESH_COOKIE_SAMESITE: Literal["lax", "strict", "none"] = "lax"
     FRONTEND_URL: str = "http://localhost:5173"
     EXTRA_ORIGINS: str = ""
     GOOGLE_CLIENT_ID: str | None = None

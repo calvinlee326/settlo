@@ -19,7 +19,7 @@ connect_args = (
     else {}
 )
 
-engine = create_engine(database_url, connect_args=connect_args)
+engine = create_engine(database_url, connect_args=connect_args, pool_pre_ping=True)
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 
 

@@ -1,3 +1,4 @@
+import time
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -12,7 +13,7 @@ from app.core.security import (
     get_current_user,
 )
 from app.database import get_db
-from app.models.user import TokenBlacklist, User
+from app.models.user import TokenBlacklist, User, utcnow
 from app.schemas.user import (
     GoogleAuthRequest,
     HandleAvailability,
@@ -34,6 +35,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 REFRESH_COOKIE_NAME = "settlo_refresh"
 REFRESH_COOKIE_PATH = "/api/auth"
+SIGN_INS_PER_MINUTE = 10
 _AUTH_ORIGINS = frozenset(
     [settings.FRONTEND_URL]
     + [origin.strip() for origin in settings.EXTRA_ORIGINS.split(",") if origin.strip()]
@@ -85,7 +87,23 @@ def _google_claims(credential: str) -> dict:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc))
 
 
-@router.post("/google", response_model=TokenResponse)
+def _limit_sign_ins(request: Request) -> None:
+    # ponytail: fixed one-minute window kept in this process's memory. Move it to
+    # a shared store if the API ever runs as more than one instance.
+    window = int(time.time() // 60)
+    state = request.app.state
+    if getattr(state, "sign_in_window", None) != window:
+        state.sign_in_window, state.sign_in_counts = window, {}
+    client = request.client.host if request.client else "unknown"
+    state.sign_in_counts[client] = state.sign_in_counts.get(client, 0) + 1
+    if state.sign_in_counts[client] > SIGN_INS_PER_MINUTE:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many sign-in attempts, try again in a minute",
+        )
+
+
+@router.post("/google", response_model=TokenResponse, dependencies=[Depends(_limit_sign_ins)])
 def google_login(
     body: GoogleAuthRequest, request: Request, response: Response,
     db: Session = Depends(get_db),
@@ -161,6 +179,10 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
     cookie = request.cookies.get(REFRESH_COOKIE_NAME)
     if cookie:
         _blacklist(db, cookie)
+    # An expired token is rejected on its own, so its revocation row is dead weight.
+    db.query(TokenBlacklist).filter(TokenBlacklist.expired_at < utcnow()).delete(
+        synchronize_session=False
+    )
     db.commit()
     response.delete_cookie(
         REFRESH_COOKIE_NAME, path=REFRESH_COOKIE_PATH,

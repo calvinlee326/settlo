@@ -2,11 +2,11 @@ import axios from 'axios';
 import { mutate, unload } from 'swr';
 import useAuthStore from '../store/authStore';
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
+// Same origin everywhere: Vercel rewrites /api to the backend in production and
+// Vite proxies it in development, so the refresh cookie is first-party (Safari
+// blocks it cross-site) and requests skip CORS preflights.
 const api = axios.create({
-  baseURL: `${API_BASE_URL}/api`,
+  baseURL: '/api',
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true,
 });
@@ -23,7 +23,7 @@ let refreshPromise = null;
 
 async function refreshAccessToken() {
   if (!refreshPromise) {
-    refreshPromise = axios.post(`${API_BASE_URL}/api/auth/refresh`, null, {
+    refreshPromise = axios.post('/api/auth/refresh', null, {
       withCredentials: true,
     }).then(({ data }) => {
       useAuthStore.getState().setAccessToken(data.access_token);
