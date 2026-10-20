@@ -46,7 +46,7 @@ uvicorn app.main:app --reload
 
 The API runs at http://localhost:8000 (docs at http://localhost:8000/docs).
 
-`.env.example` ships a PostgreSQL URL. For local development set `DATABASE_URL=sqlite:///./settlo.db` and a `SECRET_KEY` of at least 32 characters. For local HTTP, also set `REFRESH_COOKIE_SECURE=false` and `REFRESH_COOKIE_SAMESITE=lax`. For production, use a managed PostgreSQL URL such as `postgresql+psycopg://...`.
+`.env.example` ships a PostgreSQL URL. For local development set `DATABASE_URL=sqlite:///./settlo.db` and a `SECRET_KEY` of at least 32 characters. For local HTTP, also set `REFRESH_COOKIE_SECURE=false`. For production, use a managed PostgreSQL URL such as `postgresql+psycopg://...`.
 
 To sign in locally, set `GOOGLE_CLIENT_ID` in `backend/.env` and the same value as `VITE_GOOGLE_CLIENT_ID` in `frontend/.env.local`, with `http://localhost` and `http://localhost:5173` as authorized origins (see Authentication below).
 
@@ -58,7 +58,7 @@ npm install
 npm run dev
 ```
 
-The app runs at http://localhost:5173.
+The app runs at http://localhost:5173. The dev server proxies `/api` to the backend on port 8000 (set `API_PROXY_TARGET` to point it elsewhere), so the browser only ever talks to one origin.
 
 ### Docker
 
@@ -90,13 +90,13 @@ Set these variables on the Railway service:
 - `GOOGLE_CLIENT_ID` — OAuth web client ID; required, since Google is the only way to sign in (see below). Must match the frontend's `VITE_GOOGLE_CLIENT_ID`.
 - `FRONTEND_URL` — the deployed frontend origin (e.g. `https://settlo-sooty.vercel.app`, no trailing slash). Required for CORS; requests from other origins are rejected.
 - `EXTRA_ORIGINS` — optional comma-separated list of additional trusted origins. These origins can also use the cookie authentication endpoints; do not use wildcards.
-- `REFRESH_COOKIE_SECURE=true` and `REFRESH_COOKIE_SAMESITE=none` — defaults required for the current cross-site Vercel/Railway deployment. `SameSite=none` with an insecure cookie is rejected at startup. Browsers that block third-party cookies may prevent session restoration; deploy frontend and API under the same site (for example `app.example.com` and `api.example.com`) to support those browsers reliably.
+- `REFRESH_COOKIE_SECURE=true` and `REFRESH_COOKIE_SAMESITE=lax` — the defaults. The browser reaches the API through the frontend's own domain (see below), so the refresh cookie is first-party. `SameSite=none` with an insecure cookie is rejected at startup.
+- Use the private `DATABASE_URL` (host `postgres.railway.internal`), not the public proxy URL (`*.proxy.rlwy.net`); the public one sends every query over the internet.
 
 ### Frontend (Vercel)
 
-- Set `VITE_API_URL` to the Railway backend URL (e.g. `https://settlo-production.up.railway.app`).
 - Set `VITE_GOOGLE_CLIENT_ID` (required; the login page has no other way in). It is baked in at build time, so redeploy after changing it.
-- `frontend/vercel.json` rewrites all paths to `index.html` so client-side routes like `/login` work on direct load and refresh.
+- `frontend/vercel.json` proxies `/api/*` to the Railway backend, so the browser talks to one origin: Safari keeps the refresh cookie (it blocks third-party ones) and requests skip CORS preflights. Change the destination there if the backend URL changes. All other paths rewrite to `index.html` so client-side routes like `/login` work on direct load and refresh.
 
 ## Authentication
 

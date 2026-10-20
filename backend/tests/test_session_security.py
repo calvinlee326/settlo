@@ -62,7 +62,7 @@ class SessionSecurityTest(unittest.TestCase):
         response = self.login()
         cookie_header = response.headers["set-cookie"]
         self.assertTrue(all(value in cookie_header for value in (
-            "HttpOnly", "Secure", "SameSite=none", "Path=/api/auth", "Max-Age=604800"
+            "HttpOnly", "Secure", "SameSite=lax", "Path=/api/auth", "Max-Age=604800"
         )))
         self.assertNotIn("refresh_token", response.json())
         refresh_token = self.client.cookies.get(auth.REFRESH_COOKIE_NAME)
