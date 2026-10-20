@@ -13,7 +13,7 @@ export function SkeletonList({ count = 3 }) {
         <div
           key={i}
           className="skeleton-card stagger-item"
-          style={{ animationDelay: `${i * 50}ms` }}
+          style={{ animationDelay: `${i * 25}ms` }}
         />
       ))}
     </div>

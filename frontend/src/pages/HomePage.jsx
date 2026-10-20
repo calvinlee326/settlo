@@ -10,7 +10,7 @@ import { useMoney } from '../lib/currency';
 import useAuthStore from '../store/authStore';
 
 // Cap the entry stagger: past this index every card animates together, so a
-// long list finishes in ~550ms instead of growing 50ms per row.
+// long list finishes in ~300ms instead of growing 25ms per row.
 const STAGGER_CAP = 4;
 
 export default function HomePage() {
@@ -258,7 +258,7 @@ export default function HomePage() {
             <GroupCard
               key={group.id}
               group={group}
-              style={{ animationDelay: `${Math.min(i, STAGGER_CAP) * 50}ms` }}
+              style={{ animationDelay: `${Math.min(i, STAGGER_CAP) * 25}ms` }}
             />
           ))}
         </div>
