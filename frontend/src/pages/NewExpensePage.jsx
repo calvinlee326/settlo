@@ -29,6 +29,7 @@ export default function NewExpensePage() {
   const [participants, setParticipants] = useState([]);
   const [participantsTouched, setParticipantsTouched] = useState(false);
   const [history, setHistory] = useState([]);
+  const [historyError, setHistoryError] = useState(false);
   const [error, setError] = useState('');
   const [formReady, setFormReady] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -73,7 +74,7 @@ export default function NewExpensePage() {
     api
       .get(`/groups/${id}/expenses/${expenseId}/history`)
       .then(({ data }) => setHistory(data))
-      .catch(() => {});
+      .catch(() => setHistoryError(true));
   }, [id, expenseId, isEdit]);
 
   const totalAmount = parseFloat(amount) || 0;
@@ -375,6 +376,9 @@ export default function NewExpensePage() {
               </p>
             ))}
           </div>
+        )}
+        {historyError && (
+          <p className="text-[13px] text-muted">Couldn&rsquo;t load the edit history.</p>
         )}
 
         <ErrorMessage
