@@ -7,3 +7,4 @@ pydantic>=2.7.0
 pydantic-settings>=2.3.0
 PyJWT[crypto]>=2.8.0
 python-dotenv>=1.0.0
+httpx2>=2.13.0  # starlette TestClient, used by the tests
