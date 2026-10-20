@@ -87,6 +87,16 @@ def _google_claims(credential: str) -> dict:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc))
 
 
+def _visitor(request: Request) -> str:
+    # Through the Vercel /api proxy every request comes from a Vercel server, so
+    # the visitor's address is in the header Vercel adds. Someone calling Railway
+    # directly can forge it, which only lets them dodge or misdirect this limit.
+    forwarded = request.headers.get("x-vercel-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
 def _limit_sign_ins(request: Request) -> None:
     # ponytail: fixed one-minute window kept in this process's memory. Move it to
     # a shared store if the API ever runs as more than one instance.
@@ -94,7 +104,7 @@ def _limit_sign_ins(request: Request) -> None:
     state = request.app.state
     if getattr(state, "sign_in_window", None) != window:
         state.sign_in_window, state.sign_in_counts = window, {}
-    client = request.client.host if request.client else "unknown"
+    client = _visitor(request)
     state.sign_in_counts[client] = state.sign_in_counts.get(client, 0) + 1
     if state.sign_in_counts[client] > SIGN_INS_PER_MINUTE:
         raise HTTPException(
