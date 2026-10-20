@@ -51,12 +51,13 @@ export async function initializeSession() {
 api.interceptors.response.use(
   (response) => {
     const { method, url } = response.config;
-    // A write can move balances on any screen: drop every cached read so the
-    // next screen fetches fresh, and refetch the ones on show (keepPreviousData
-    // keeps them on screen meanwhile). Auth writes are skipped: logout must not
+    // A write can move balances on any screen: refetch the reads on show and
+    // mark the rest to refetch when next shown. Cached data stays on screen
+    // meanwhile, so the next page renders at once instead of a skeleton. Rates
+    // never change on a write. Auth writes are skipped: logout must not
     // refetch, and an account switch is handled below.
     if (method !== 'get' && !url.startsWith('/auth/')) {
-      mutate(() => true, undefined, { revalidate: true });
+      mutate((key) => key !== '/rates');
     }
     return response;
   },

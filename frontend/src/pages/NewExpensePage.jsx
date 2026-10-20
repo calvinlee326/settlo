@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import useSWR from 'swr';
+import useSWR, { mutate } from 'swr';
 import api from '../api/axios';
 import useAuthStore from '../store/authStore';
 import Button from '../components/Button';
@@ -158,10 +158,14 @@ export default function NewExpensePage() {
       } else {
         body.participants = participants;
       }
+      // Put the saved expense straight into the cached list so the group page
+      // shows it on arrival rather than the list from before the save.
       if (isEdit) {
-        await api.put(`/groups/${id}/expenses/${expenseId}`, body);
+        const { data } = await api.put(`/groups/${id}/expenses/${expenseId}`, body);
+        mutate(`/groups/${id}/expenses/`, (list) => list?.map((e) => (e.id === data.id ? data : e)), { revalidate: false });
       } else {
-        await api.post(`/groups/${id}/expenses/`, body);
+        const { data } = await api.post(`/groups/${id}/expenses/`, body);
+        mutate(`/groups/${id}/expenses/`, (list) => list && [data, ...list], { revalidate: false });
       }
       navigate(`/groups/${id}`);
     } catch (err) {
