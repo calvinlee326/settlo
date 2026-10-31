@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { mutate, unload } from 'swr';
 import useAuthStore from '../store/authStore';
+import { clearSnapshot, onSnapshotRemoved } from '../lib/snapshot';
 
 // Same origin everywhere: Vercel rewrites /api to the backend in production and
 // Vite proxies it in development, so the refresh cookie is first-party (Safari
@@ -11,7 +12,15 @@ const api = axios.create({
   withCredentials: true,
 });
 
-api.interceptors.request.use((config) => {
+api.interceptors.request.use(async (config) => {
+  // The app opens on saved data before the session is restored. Wait for the
+  // restore instead of sending a request that can only come back 401; if it
+  // fails, the request goes anyway and the 401 path below handles it. Auth
+  // routes skip the wait: logout runs inside the session lock, which a
+  // refresh may be queued on.
+  if (refreshPromise && !useAuthStore.getState().accessToken && !config.url.startsWith('/auth/')) {
+    await refreshPromise.catch(() => {});
+  }
   const { accessToken } = useAuthStore.getState();
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`;
@@ -101,7 +110,14 @@ export const fetcher = (url) => api.get(url).then(({ data }) => data);
 
 // Never let one account's cached reads reach the next one on this tab.
 useAuthStore.subscribe((state, prev) => {
-  if (state.user?.id !== prev.user?.id) unload({ revalidate: false });
+  if (state.user?.id !== prev.user?.id) {
+    unload({ revalidate: false });
+    clearSnapshot(!state.user);
+  }
 });
+
+// Signing out in another tab removes the snapshot. Sign this tab out too, or
+// its next save would put the old account's data back on the device.
+onSnapshotRemoved(() => useAuthStore.getState().clearAuth());
 
 export default api;
