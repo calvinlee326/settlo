@@ -66,7 +66,13 @@
     transition:
       background-color 0.15s ease,
       border-color 0.15s ease,
-      color 0.15s ease;
+      color 0.15s ease,
+      opacity 0.2s ease,
+      transform 0.12s ease-out;
+  }
+
+  .btn:active:not(:disabled) {
+    transform: scale(0.97);
   }
 
   .btn:disabled {
@@ -138,7 +144,7 @@
     transition:
       background-color 0.15s ease,
       transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-    animation: springScale 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    animation: springScale 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
   }
 
   .fab:hover {
@@ -196,12 +202,49 @@
   }
 
   /* ── Motion ─────────────────────────────────────── */
+  /* Entrances fill backwards only: a filled end state would keep owning
+     transform and block the :active press scale. */
   .page-enter {
-    animation: fadeSlideUp 0.3s ease-out both;
+    animation: fadeSlideUp 0.3s ease-out backwards;
   }
 
   .stagger-item {
-    animation: fadeSlideUp 0.2s ease-out both;
+    animation: fadeSlideUp 0.2s ease-out backwards;
+  }
+
+  .menu-enter {
+    transform-origin: top right;
+    animation: menuIn 0.16s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+
+  .label-swap {
+    display: inline-block;
+    animation: fadeSlideUp 0.18s ease-out backwards;
+  }
+
+  /* ── Payment recorded ───────────────────────────── */
+  /* Paid rows are struck with a background line, not text-decoration, so the
+     row just marked paid can draw it left to right. Every default here is the
+     finished state; .just-paid only animates into it. */
+  .strike {
+    background: linear-gradient(currentColor, currentColor) no-repeat 0 58% / 100% 0.08em;
+  }
+
+  .just-paid .strike {
+    animation: strikeIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+
+  .just-paid .strike-late {
+    animation-delay: 0.08s;
+  }
+
+  .just-paid .paid-stamp {
+    animation: stampIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.22s backwards;
+  }
+
+  .just-paid .paid-check {
+    stroke-dasharray: 20; /* path length of M5 13l4 4L19 7 */
+    animation: checkDraw 0.28s ease-out 0.4s backwards;
   }
 
   /* ── Skeleton loading ───────────────────────────── */
@@ -239,6 +282,65 @@
   }
 }
 
+/* Keyframes live here, not in tailwind.config: Tailwind only emits config
+   keyframes for animate-* utilities, and these are used by plain classes. */
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes springScale {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes menuIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
+}
+
+@keyframes strikeIn {
+  from {
+    background-size: 0 0.08em;
+  }
+}
+
+@keyframes stampIn {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+@keyframes checkDraw {
+  from {
+    stroke-dashoffset: 20;
+  }
+}
+
 @keyframes spinner-spin {
   to {
     transform: rotate(360deg);
@@ -248,6 +350,11 @@
 @media (prefers-reduced-motion: reduce) {
   .page-enter,
   .stagger-item,
+  .menu-enter,
+  .label-swap,
+  .just-paid .strike,
+  .just-paid .paid-stamp,
+  .just-paid .paid-check,
   .fab,
   .skeleton-card::after,
   .spinner-ring {

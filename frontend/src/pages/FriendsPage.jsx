@@ -97,7 +97,7 @@ export default function FriendsPage() {
           <button
             onClick={addFriend}
             disabled={!contact.trim()}
-            className="shrink-0 rounded-xl bg-ink px-4 py-2 text-[14px] font-medium text-white transition-opacity hover:opacity-80 disabled:opacity-40"
+            className="shrink-0 rounded-xl bg-ink px-4 py-2 text-[14px] font-medium text-white transition active:scale-[0.97] hover:opacity-80 disabled:opacity-40"
           >
             Add
           </button>

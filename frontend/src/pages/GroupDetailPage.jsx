@@ -27,6 +27,8 @@ export default function GroupDetailPage() {
     mutate: mutateExpenses,
   } = useSWR(`/groups/${id}/expenses/`);
   const { data: friends = [] } = useSWR('/friends');
+  // Cards fade in only when they replace the skeleton; from cache they show at once.
+  const [animateIn] = useState(!group || !expensesData);
   const [error, setError] = useState('');
   const [inviteLink, setInviteLink] = useState('');
   const [linkCopied, setLinkCopied] = useState(false);
@@ -345,7 +347,11 @@ export default function GroupDetailPage() {
             <ExpenseItem
               key={expense.id}
               expense={expense}
-              style={{ animationDelay: `${Math.min(i, STAGGER_CAP) * 25}ms` }}
+              style={
+                animateIn
+                  ? { animationDelay: `${Math.min(i, STAGGER_CAP) * 25}ms` }
+                  : { animation: 'none' }
+              }
               canDelete={!isSettled && (expense.created_by === user?.id || isCreator)}
               editTo={
                 !isSettled && (expense.created_by === user?.id || isCreator)
@@ -397,9 +403,9 @@ export default function GroupDetailPage() {
                 />
                 <button
                   onClick={copyInviteLink}
-                  className="shrink-0 rounded-xl bg-ink px-4 py-2 text-[13px] font-medium text-white transition-opacity hover:opacity-80"
+                  className="shrink-0 rounded-xl bg-ink px-4 py-2 text-[13px] font-medium text-white transition active:scale-[0.97] hover:opacity-80"
                 >
-                  {linkCopied ? 'Copied' : 'Copy'}
+                  {linkCopied ? <span className="label-swap">Copied</span> : 'Copy'}
                 </button>
               </div>
             </div>
@@ -419,7 +425,7 @@ export default function GroupDetailPage() {
                 <button
                   onClick={sendInvite}
                   disabled={busy || !inviteContact.trim()}
-                  className="shrink-0 rounded-xl bg-ink px-4 py-2 text-[13px] font-medium text-white transition-opacity hover:opacity-80 disabled:opacity-40"
+                  className="shrink-0 rounded-xl bg-ink px-4 py-2 text-[13px] font-medium text-white transition active:scale-[0.97] hover:opacity-80 disabled:opacity-40"
                 >
                   {busy ? 'Sending…' : 'Invite'}
                 </button>
@@ -456,7 +462,7 @@ export default function GroupDetailPage() {
                       <button
                         onClick={() => addFriend(inviteFriendId)}
                         disabled={busy || !inviteFriendId}
-                        className="shrink-0 rounded-xl bg-ink px-4 py-2 text-[13px] font-medium text-white transition-opacity hover:opacity-80 disabled:opacity-40"
+                        className="shrink-0 rounded-xl bg-ink px-4 py-2 text-[13px] font-medium text-white transition active:scale-[0.97] hover:opacity-80 disabled:opacity-40"
                       >
                         {busy ? 'Adding…' : 'Add'}
                       </button>
@@ -467,7 +473,7 @@ export default function GroupDetailPage() {
             })()}
             <button
               onClick={() => { setInviteLink(''); setInviteNotice(''); setLinkCopied(false); }}
-              className="w-full rounded-xl bg-sunk py-2 text-[14px] font-medium text-ink-soft transition-opacity hover:opacity-80"
+              className="w-full rounded-xl bg-sunk py-2 text-[14px] font-medium text-ink-soft transition active:scale-[0.97] hover:opacity-80"
             >
               Close
             </button>

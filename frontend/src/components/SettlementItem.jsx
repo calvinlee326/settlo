@@ -2,12 +2,14 @@ import Avatar from './Avatar';
 import Button from './Button';
 import { useMoney } from '../lib/currency';
 
-export default function SettlementItem({ settlement, onPay, onReverse, paying, style }) {
+export default function SettlementItem({ settlement, onPay, onReverse, paying, justPaid, style }) {
   const { format } = useMoney();
   return (
     <div
       style={style}
       className={`stagger-item relative flex items-center gap-3 overflow-hidden rounded-card border p-4 pl-5 transition-colors ${
+        justPaid ? 'just-paid ' : ''
+      }${
         settlement.is_paid
           ? 'border-rule bg-sunk'
           : 'card hover:border-rule-strong'
@@ -20,23 +22,23 @@ export default function SettlementItem({ settlement, onPay, onReverse, paying, s
       <div className="min-w-0 flex-1">
         <p
           className={`text-[15px] ${
-            settlement.is_paid ? 'text-muted line-through' : 'text-ink'
+            settlement.is_paid ? 'text-muted' : 'text-ink'
           }`}
         >
-          <span className="font-semibold">
-            {settlement.from_username || 'Someone'}
-          </span>{' '}
-          pays{' '}
-          <span className="font-semibold">
-            {settlement.to_username || 'someone'}
+          <span className={settlement.is_paid ? 'strike' : undefined}>
+            <span className="font-semibold">
+              {settlement.from_username || 'Someone'}
+            </span>{' '}
+            pays{' '}
+            <span className="font-semibold">
+              {settlement.to_username || 'someone'}
+            </span>
           </span>
         </p>
-        <p
-          className={`text-lg font-bold tabular-nums text-ink ${
-            settlement.is_paid ? 'line-through' : ''
-          }`}
-        >
-          {format(settlement.amount)}
+        <p className="text-lg font-bold tabular-nums text-ink">
+          <span className={settlement.is_paid ? 'strike strike-late' : undefined}>
+            {format(settlement.amount)}
+          </span>
         </p>
         {settlement.recorded_by_username && (
           <p className="text-xs text-muted">
@@ -48,9 +50,9 @@ export default function SettlementItem({ settlement, onPay, onReverse, paying, s
       </div>
       {settlement.is_paid ? (
         <div className="flex shrink-0 items-center gap-2">
-          <span className="flex items-center gap-1 rounded-pill border border-rule px-3 py-1 text-xs font-semibold text-ink">
+          <span className="paid-stamp flex items-center gap-1 rounded-pill border border-rule px-3 py-1 text-xs font-semibold text-ink">
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              <path className="paid-check" strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
             Paid
           </span>

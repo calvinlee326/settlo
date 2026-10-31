@@ -16,16 +16,23 @@ export default function SettlementPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { data, error: loadError, mutate } = useSWR(`/groups/${id}/settlements/`);
+  // Cards fade in only when they replace the skeleton; from cache they show at once.
+  const [animateIn] = useState(!data);
   const [confirming, setConfirming] = useState(false);
   const { format } = useMoney();
   const [pendingId, setPendingId] = useState(null);
+  // The row just marked paid plays the strike-and-stamp when it lands in the paid list.
+  const [justPaidId, setJustPaidId] = useState(null);
   const [error, setError] = useState('');
 
   const act = async (settlementId, path, fallback) => {
     setPendingId(settlementId);
     setError('');
     try {
-      await api.post(`/groups/${id}/settlements/${settlementId}/${path}`);
+      const { data: saved } = await api.post(`/groups/${id}/settlements/${settlementId}/${path}`);
+      // Paying a suggested transfer records it under a new id. Set it before
+      // the refetch lands so the row mounts already marked.
+      setJustPaidId(path === 'pay' ? saved.id : null);
       // Hold the row's pending state until the refreshed list is on screen.
       // ponytail: re-requests the list the write already refetched, one spare GET per tap.
       await mutate();
@@ -110,7 +117,11 @@ export default function SettlementPage() {
 
       <h2 className="text-lg font-medium text-ink">Who pays whom</h2>
       {outstanding === 0 ? (
-        <div className="rounded-card border border-dashed border-rule bg-surface p-8 text-center">
+        <div
+          className={`rounded-card border border-dashed border-rule bg-surface p-8 text-center ${
+            justPaidId ? 'page-enter' : ''
+          }`}
+        >
           <p className="text-[15px] text-muted">
             All even — nobody owes anything.
           </p>
@@ -121,7 +132,11 @@ export default function SettlementPage() {
             <SettlementItem
               key={settlement.id}
               settlement={settlement}
-              style={{ animationDelay: `${Math.min(i, STAGGER_CAP) * 25}ms` }}
+              style={
+                animateIn
+                  ? { animationDelay: `${Math.min(i, STAGGER_CAP) * 25}ms` }
+                  : { animation: 'none' }
+              }
               paying={pendingId === settlement.id}
               onPay={() =>
                 act(settlement.id, 'pay', 'Failed to record this payment')
@@ -139,6 +154,12 @@ export default function SettlementPage() {
               <SettlementItem
                 key={settlement.id}
                 settlement={settlement}
+                justPaid={settlement.id === justPaidId}
+                style={
+                  animateIn || settlement.id === justPaidId
+                    ? undefined
+                    : { animation: 'none' }
+                }
                 paying={pendingId === settlement.id}
                 onReverse={() =>
                   act(settlement.id, 'reverse', 'Failed to undo this payment')

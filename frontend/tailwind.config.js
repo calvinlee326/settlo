@@ -28,25 +28,6 @@ export default {
       transitionTimingFunction: {
         spring: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
       },
-      keyframes: {
-        fadeSlideUp: {
-          from: { opacity: '0', transform: 'translateY(8px)' },
-          to: { opacity: '1', transform: 'translateY(0)' },
-        },
-        shimmer: {
-          from: { transform: 'translateX(-100%)' },
-          to: { transform: 'translateX(100%)' },
-        },
-        springScale: {
-          '0%': { transform: 'scale(0)', opacity: '0' },
-          '100%': { transform: 'scale(1)', opacity: '1' },
-        },
-      },
-      animation: {
-        fadeSlideUp: 'fadeSlideUp 0.3s ease-out both',
-        shimmer: 'shimmer 1.6s infinite',
-        springScale: 'springScale 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both',
-      },
     },
   },
   plugins: [],
