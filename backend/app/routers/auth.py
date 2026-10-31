@@ -1,4 +1,3 @@
-import time
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -11,6 +10,7 @@ from app.core.security import (
     create_refresh_token,
     decode_token,
     get_current_user,
+    rate_limit,
 )
 from app.database import get_db
 from app.models.user import TokenBlacklist, User, utcnow
@@ -98,19 +98,17 @@ def _visitor(request: Request) -> str:
 
 
 def _limit_sign_ins(request: Request) -> None:
-    # ponytail: fixed one-minute window kept in this process's memory. Move it to
-    # a shared store if the API ever runs as more than one instance.
-    window = int(time.time() // 60)
-    state = request.app.state
-    if getattr(state, "sign_in_window", None) != window:
-        state.sign_in_window, state.sign_in_counts = window, {}
-    client = _visitor(request)
-    state.sign_in_counts[client] = state.sign_in_counts.get(client, 0) + 1
-    if state.sign_in_counts[client] > SIGN_INS_PER_MINUTE:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many sign-in attempts, try again in a minute",
-        )
+    rate_limit(
+        request, "sign-in", _visitor(request), SIGN_INS_PER_MINUTE,
+        "Too many sign-in attempts, try again in a minute",
+    )
+
+
+def _drop_expired_revocations(db: Session) -> None:
+    # An expired token is rejected on its own, so its revocation row is dead weight.
+    db.query(TokenBlacklist).filter(TokenBlacklist.expired_at < utcnow()).delete(
+        synchronize_session=False
+    )
 
 
 @router.post("/google", response_model=TokenResponse, dependencies=[Depends(_limit_sign_ins)])
@@ -189,10 +187,7 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
     cookie = request.cookies.get(REFRESH_COOKIE_NAME)
     if cookie:
         _blacklist(db, cookie)
-    # An expired token is rejected on its own, so its revocation row is dead weight.
-    db.query(TokenBlacklist).filter(TokenBlacklist.expired_at < utcnow()).delete(
-        synchronize_session=False
-    )
+    _drop_expired_revocations(db)
     db.commit()
     response.delete_cookie(
         REFRESH_COOKIE_NAME, path=REFRESH_COOKIE_PATH,
@@ -203,7 +198,7 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
 
 
 @router.post("/refresh", response_model=TokenResponse)
-def refresh(request: Request, db: Session = Depends(get_db)):
+def refresh(request: Request, response: Response, db: Session = Depends(get_db)):
     _check_origin(request)
     cookie = request.cookies.get(REFRESH_COOKIE_NAME)
     if not cookie:
@@ -227,10 +222,20 @@ def refresh(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found"
         )
-    return TokenResponse(
-        access_token=create_access_token(user.id),
-        user=UserOut.model_validate(user),
-    )
+    # Rotate: retire this cookie and set a fresh one. A copied cookie dies the
+    # next time its owner refreshes, and an active session never reaches the
+    # 7-day cutoff. Tabs queue their refreshes (Web Locks) so they never race.
+    _blacklist(db, cookie)
+    _drop_expired_revocations(db)
+    try:
+        db.commit()
+    except IntegrityError:
+        # A parallel refresh retired this same cookie first.
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has been revoked"
+        )
+    return _issue_session(response, user)
 
 
 @router.get("/me", response_model=UserOut)

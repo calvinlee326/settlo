@@ -21,11 +21,16 @@ api.interceptors.request.use((config) => {
 
 let refreshPromise = null;
 
+// Each refresh retires the cookie it sends and sets a new one, and all tabs
+// share that cookie. Tabs take turns so none sends a cookie another tab just
+// retired, which would sign it out.
+const postRefresh = () => axios.post('/api/auth/refresh', null, { withCredentials: true });
+
 async function refreshAccessToken() {
   if (!refreshPromise) {
-    refreshPromise = axios.post('/api/auth/refresh', null, {
-      withCredentials: true,
-    }).then(({ data }) => {
+    refreshPromise = (
+      navigator.locks ? navigator.locks.request('settlo-refresh', postRefresh) : postRefresh()
+    ).then(({ data }) => {
       useAuthStore.getState().setAccessToken(data.access_token);
       return data;
     }).finally(() => { refreshPromise = null; });

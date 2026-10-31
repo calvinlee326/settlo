@@ -1,8 +1,9 @@
+import time
 import uuid
 from datetime import datetime, timedelta, timezone
 
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
@@ -47,6 +48,19 @@ def decode_token(token: str) -> dict:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
         )
+
+
+def rate_limit(request: Request, bucket: str, key: str, per_minute: int, detail: str) -> None:
+    # ponytail: fixed one-minute window kept in this process's memory. Move it to
+    # a shared store if the API ever runs as more than one instance.
+    window = int(time.time() // 60)
+    state = request.app.state
+    if getattr(state, "rate_window", None) != window:
+        state.rate_window, state.rate_counts = window, {}
+    counted = (bucket, key)
+    state.rate_counts[counted] = state.rate_counts.get(counted, 0) + 1
+    if state.rate_counts[counted] > per_minute:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=detail)
 
 
 def get_token(

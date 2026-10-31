@@ -35,6 +35,7 @@ export default function GroupDetailPage() {
   const [inviteContact, setInviteContact] = useState('');
   const [inviteFriendId, setInviteFriendId] = useState('');
   const [inviteNotice, setInviteNotice] = useState('');
+  const [linkNotice, setLinkNotice] = useState('');
   // ponytail: one busy flag for the whole page. Split per-action if two
   // of these ever need to run at once.
   const [busy, setBusy] = useState(false);
@@ -117,6 +118,21 @@ export default function GroupDetailPage() {
       setLinkCopied(true);
     } catch {
       setError('Could not copy. Select the link and copy it manually.');
+    }
+  };
+
+  const resetInviteLink = async () => {
+    if (!window.confirm('Reset the invite link? The current link will stop working.')) return;
+    setBusy(true);
+    try {
+      const { data } = await api.post(`/groups/${id}/invite/reset`);
+      setInviteLink(`${window.location.origin}/invite/${data.invite_token}`);
+      setLinkCopied(false);
+      setLinkNotice('New link ready. The old one no longer works.');
+    } catch (err) {
+      setLinkNotice(err.response?.data?.detail || 'Could not reset the link');
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -408,6 +424,16 @@ export default function GroupDetailPage() {
                   {linkCopied ? <span className="label-swap">Copied</span> : 'Copy'}
                 </button>
               </div>
+              {isCreator && (
+                <button
+                  onClick={resetInviteLink}
+                  disabled={busy}
+                  className="text-[13px] font-medium text-muted transition-colors hover:text-ink disabled:opacity-40"
+                >
+                  Reset link
+                </button>
+              )}
+              {linkNotice && <p className="text-[12px] text-ink">{linkNotice}</p>}
             </div>
             <div className="space-y-2 border-t border-rule pt-3">
               <label htmlFor="invite-contact" className="block text-[13px] font-medium text-muted">Invite by ID</label>
@@ -472,7 +498,7 @@ export default function GroupDetailPage() {
               );
             })()}
             <button
-              onClick={() => { setInviteLink(''); setInviteNotice(''); setLinkCopied(false); }}
+              onClick={() => { setInviteLink(''); setInviteNotice(''); setLinkNotice(''); setLinkCopied(false); }}
               className="w-full rounded-xl bg-sunk py-2 text-[14px] font-medium text-ink-soft transition active:scale-[0.97] hover:opacity-80"
             >
               Close
