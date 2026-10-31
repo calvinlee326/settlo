@@ -1,9 +1,10 @@
 import { create } from 'zustand';
+import { savedUser } from '../lib/snapshot';
 
 localStorage.removeItem('settlo-auth');
 
 const useAuthStore = create((set) => ({
-  user: null,
+  user: savedUser,
   accessToken: null,
   sessionStatus: 'loading',
   setAuth: ({ user, accessToken }) => set({ user, accessToken, sessionStatus: 'ready' }),
@@ -13,7 +14,9 @@ const useAuthStore = create((set) => ({
   clearAuth: () => set({ user: null, accessToken: null, sessionStatus: 'ready' }),
 }));
 
+// A saved user counts before the session is restored, so a returning user opens
+// on their screens. A restore rejected with 401 clears the user and sends them to login.
 export const useIsAuthenticated = () =>
-  useAuthStore((s) => Boolean(s.accessToken));
+  useAuthStore((s) => Boolean(s.user));
 
 export default useAuthStore;
