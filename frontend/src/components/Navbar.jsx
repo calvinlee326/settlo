@@ -102,7 +102,7 @@ export default function Navbar() {
                 </svg>
               </button>
               {menuOpen && (
-                <div className="card absolute right-0 mt-2 w-40 overflow-hidden py-1">
+                <div className="card menu-enter absolute right-0 mt-2 w-40 overflow-hidden py-1">
                   <button
                     onPointerEnter={warmLists}
                     onPointerLeave={coolLists}

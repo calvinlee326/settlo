@@ -17,7 +17,7 @@ export default function GroupCard({ group, style }) {
       onPointerEnter={() => setWarm(true)}
       onPointerLeave={() => setWarm(false)}
       style={style}
-      className="card stagger-item block p-4 transition-colors hover:border-rule-strong"
+      className="card stagger-item block p-4 transition active:scale-[0.985] hover:border-rule-strong"
     >
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-base font-semibold text-ink">{group.name}</h3>

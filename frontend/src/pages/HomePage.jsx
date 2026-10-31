@@ -28,6 +28,8 @@ export default function HomePage() {
   const friends = friendsData ?? [];
   const loadError = groupsError || friendsError;
   const loading = !loadError && (!groupsData || !friendsData);
+  // Cards fade in only when they replace the skeleton; from cache they show at once.
+  const [animateIn] = useState(loading);
   const error = loadError
     ? loadError.response?.data?.detail || 'Failed to load groups'
     : '';
@@ -132,7 +134,7 @@ export default function HomePage() {
                 to={`/groups/${expenseGroupId || activeGroups[0].id}/expenses/new`}
                 onPointerEnter={() => setWarmKey(`/groups/${expenseGroupId || activeGroups[0].id}`)}
                 onPointerLeave={() => setWarmKey(null)}
-                className="shrink-0 rounded-xl bg-ink px-4 py-2 text-[13px] font-medium text-white transition-opacity hover:opacity-80"
+                className="shrink-0 rounded-xl bg-ink px-4 py-2 text-[13px] font-medium text-white transition active:scale-[0.97] hover:opacity-80"
               >
                 Add expense
               </Link>
@@ -140,7 +142,7 @@ export default function HomePage() {
           )}
           <Link
             to="/friends/expenses/new"
-            className="shrink-0 rounded-xl bg-sunk px-4 py-2 text-[13px] font-medium text-ink-soft transition-opacity hover:opacity-80"
+            className="shrink-0 rounded-xl bg-sunk px-4 py-2 text-[13px] font-medium text-ink-soft transition active:scale-[0.97] hover:opacity-80"
           >
             With a friend
           </Link>
@@ -156,7 +158,7 @@ export default function HomePage() {
               to={item.to}
               onPointerEnter={() => setWarmKey(item.warm)}
               onPointerLeave={() => setWarmKey(null)}
-              className="card flex items-center justify-between gap-3 p-4 transition-colors hover:border-rule-strong"
+              className="card flex items-center justify-between gap-3 p-4 transition active:scale-[0.985] hover:border-rule-strong"
             >
               <span className="min-w-0 flex-1 truncate text-[15px] text-ink">
                 {item.name}
@@ -238,7 +240,7 @@ export default function HomePage() {
           </ol>
           <Link
             to="/groups/new"
-            className="inline-block rounded-xl bg-ink px-5 py-2.5 text-[14px] font-medium text-white transition-opacity hover:opacity-80"
+            className="inline-block rounded-xl bg-ink px-5 py-2.5 text-[14px] font-medium text-white transition active:scale-[0.97] hover:opacity-80"
           >
             Create your first group
           </Link>
@@ -258,7 +260,11 @@ export default function HomePage() {
             <GroupCard
               key={group.id}
               group={group}
-              style={{ animationDelay: `${Math.min(i, STAGGER_CAP) * 25}ms` }}
+              style={
+                animateIn
+                  ? { animationDelay: `${Math.min(i, STAGGER_CAP) * 25}ms` }
+                  : { animation: 'none' }
+              }
             />
           ))}
         </div>
