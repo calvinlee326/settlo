@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useSWR from 'swr';
-import api from '../api/axios';
+import api, { withSessionLock } from '../api/axios';
 import useAuthStore from '../store/authStore';
 
 export default function Navbar() {
@@ -44,7 +44,7 @@ export default function Navbar() {
   const handleLogout = async () => {
     setLogoutError('');
     try {
-      await api.post('/auth/logout');
+      await withSessionLock(() => api.post('/auth/logout'));
     } catch {
       setLogoutError('Logout failed. Please try again.');
       return;
