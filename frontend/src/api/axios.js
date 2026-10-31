@@ -21,11 +21,19 @@ api.interceptors.request.use((config) => {
 
 let refreshPromise = null;
 
+// Each refresh retires the cookie it sends and sets a new one, and all tabs
+// share that cookie. Refreshes and logout take turns across tabs: otherwise a
+// tab sends a cookie another tab just retired and is signed out, or a refresh
+// landing after a logout sets a live cookie again. Never nest: locks are not
+// reentrant, which is why the logout 401 path skips refresh.
+export const withSessionLock = (fn) =>
+  navigator.locks ? navigator.locks.request('settlo-session', fn) : fn();
+
+const postRefresh = () => axios.post('/api/auth/refresh', null, { withCredentials: true });
+
 async function refreshAccessToken() {
   if (!refreshPromise) {
-    refreshPromise = axios.post('/api/auth/refresh', null, {
-      withCredentials: true,
-    }).then(({ data }) => {
+    refreshPromise = withSessionLock(postRefresh).then(({ data }) => {
       useAuthStore.getState().setAccessToken(data.access_token);
       return data;
     }).finally(() => { refreshPromise = null; });

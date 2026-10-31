@@ -79,7 +79,31 @@ class SessionSecurityTest(unittest.TestCase):
         self.assertEqual(self.client.get("/api/auth/me", headers=headers).status_code, 401)
         self.client.cookies.set(auth.REFRESH_COOKIE_NAME, refresh_token)
         self.assertEqual(self.client.post("/api/auth/refresh").status_code, 401)
-        self.assertEqual(self.db.query(TokenBlacklist).count(), 2)
+        # The cookie retired by the refresh, then the access token and newer cookie at logout.
+        self.assertEqual(self.db.query(TokenBlacklist).count(), 3)
+
+    def test_refresh_issues_a_new_cookie(self):
+        self.login()
+        old = self.client.cookies.get(auth.REFRESH_COOKIE_NAME)
+
+        self.client.post("/api/auth/refresh")
+
+        self.assertNotEqual(self.client.cookies.get(auth.REFRESH_COOKIE_NAME), old)
+
+    def test_a_refreshed_cookie_cannot_be_used_again(self):
+        self.login()
+        old = self.client.cookies.get(auth.REFRESH_COOKIE_NAME)
+        self.client.post("/api/auth/refresh")
+        self.client.cookies.clear()
+        self.client.cookies.set(auth.REFRESH_COOKIE_NAME, old)
+
+        self.assertEqual(self.client.post("/api/auth/refresh").status_code, 401)
+
+    def test_an_active_session_keeps_refreshing(self):
+        self.login()
+        statuses = [self.client.post("/api/auth/refresh").status_code for _ in range(3)]
+
+        self.assertEqual(statuses, [200, 200, 200])
 
     def test_cookie_endpoints_reject_missing_and_untrusted_origins(self):
         for origin in (None, "null", "https://attacker.example"):

@@ -135,15 +135,57 @@ class AddFriendMemberTest(GroupJoinTest):
 
 
 class ShortCodeTest(GroupJoinTest):
-    def test_create_group_gets_short_code(self):
+    def test_create_group_gets_unguessable_code(self):
         res = self.client.post(
             "/api/groups/",
             json={"name": "Beach"},
             headers=self._auth(self.owner),
         )
         self.assertEqual(res.status_code, 201)
-        # The created group's code is short and from the unambiguous alphabet.
+        # 10 characters from the unambiguous alphabet: too many to guess.
         with self.Session() as s:
             g = s.query(Group).filter(Group.name == "Beach").one()
-        self.assertEqual(len(g.invite_token), 6)
+        self.assertEqual(len(g.invite_token), 10)
         self.assertTrue(all(c in "ABCDEFGHJKMNPQRSTUVWXYZ23456789" for c in g.invite_token))
+
+
+class InviteLinkSecurityTest(GroupJoinTest):
+    def _lookup_statuses(self, user, attempts=25):
+        return [
+            self.client.get("/api/groups/join/WRONG1", headers=self._auth(user)).status_code
+            for _ in range(attempts)
+        ]
+
+    def test_guessing_invite_codes_is_throttled(self):
+        self.assertIn(429, self._lookup_statuses(self.joiner))
+
+    def test_one_users_guessing_does_not_throttle_another(self):
+        self._lookup_statuses(self.joiner)
+
+        res = self.client.post("/api/groups/join/ABCDEF", headers=self._auth(self.owner))
+
+        self.assertEqual(res.status_code, 200)
+
+    def _reset(self, user):
+        return self.client.post(
+            f"/api/groups/{self.group.id}/invite/reset", headers=self._auth(user)
+        )
+
+    def test_reset_retires_the_old_invite_link(self):
+        self._reset(self.owner)
+
+        res = self.client.post("/api/groups/join/ABCDEF", headers=self._auth(self.joiner))
+
+        self.assertEqual(res.status_code, 404)
+
+    def test_reset_link_lets_people_join(self):
+        token = self._reset(self.owner).json()["invite_token"]
+
+        res = self.client.post(f"/api/groups/join/{token}", headers=self._auth(self.joiner))
+
+        self.assertEqual(res.status_code, 200)
+
+    def test_only_the_creator_can_reset_the_invite_link(self):
+        self.client.post("/api/groups/join/ABCDEF", headers=self._auth(self.joiner))
+
+        self.assertEqual(self._reset(self.joiner).status_code, 403)

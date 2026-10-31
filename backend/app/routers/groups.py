@@ -1,12 +1,12 @@
 import secrets
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.config import settings
-from app.core.security import get_current_user
+from app.core.security import get_current_user, rate_limit
 from app.services import friends as friends_svc
 from app.database import get_db
 from app.models.expense import Expense, ExpenseSplit, Settlement, SplitType
@@ -27,7 +27,10 @@ from app.schemas.group import (
 router = APIRouter(prefix="/api/groups", tags=["groups"])
 
 INVITE_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
-INVITE_CODE_LENGTH = 6
+# 31^10 codes: guessing one is hopeless, more so at INVITE_LOOKUPS_PER_MINUTE.
+# Groups made before this keep their 6-character code until reset.
+INVITE_CODE_LENGTH = 10
+INVITE_LOOKUPS_PER_MINUTE = 10
 
 
 def _generate_code() -> str:
@@ -255,7 +258,21 @@ def list_my_groups(
     ]
 
 
-@router.get("/join/{invite_token}", response_model=InvitePreview)
+def _limit_invite_lookups(
+    request: Request, current_user: User = Depends(get_current_user)
+) -> None:
+    # Keyed by account, not address: a signed-in user cannot fake who they are.
+    rate_limit(
+        request, "invite", current_user.id, INVITE_LOOKUPS_PER_MINUTE,
+        "Too many invite link attempts, try again in a minute",
+    )
+
+
+@router.get(
+    "/join/{invite_token}",
+    response_model=InvitePreview,
+    dependencies=[Depends(_limit_invite_lookups)],
+)
 def preview_invite(
     invite_token: str,
     current_user: User = Depends(get_current_user),
@@ -293,7 +310,11 @@ def preview_invite(
     )
 
 
-@router.post("/join/{invite_token}", response_model=GroupDetail)
+@router.post(
+    "/join/{invite_token}",
+    response_model=GroupDetail,
+    dependencies=[Depends(_limit_invite_lookups)],
+)
 def join_group(
     invite_token: str,
     current_user: User = Depends(get_current_user),
@@ -348,6 +369,23 @@ def get_invite(
 ):
     group = get_group_or_404(db, group_id)
     require_membership(db, group_id, current_user.id)
+    return InviteOut(invite_token=group.invite_token)
+
+
+@router.post("/{group_id}/invite/reset", response_model=InviteOut)
+def reset_invite(
+    group_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    group = get_group_or_404(db, group_id)
+    if group.created_by != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the group creator can reset the invite link",
+        )
+    group.invite_token = _unique_invite_code(db)
+    db.commit()
     return InviteOut(invite_token=group.invite_token)
 
 
