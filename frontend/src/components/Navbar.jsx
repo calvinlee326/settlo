@@ -11,11 +11,9 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
-  // Poll incoming friend requests and group invites so the badges update when
-  // someone adds you. HomePage reads the same invites key, so it is fetched once.
-  const { data: requests } = useSWR(user ? '/friends/requests' : null, { refreshInterval: 30000 });
+  // Poll group invites so the badge updates when someone invites you.
+  // HomePage reads the same invites key, so it is fetched once.
   const { data: invites } = useSWR(user ? '/group-invitations' : null, { refreshInterval: 30000 });
-  const requestCount = requests?.length ?? 0;
   const inviteCount = invites?.length ?? 0;
   // Warm the main lists on hover/touch of a nav link so the next screen opens from cache.
   const [warm, setWarm] = useState(false);
@@ -78,11 +76,6 @@ export default function Navbar() {
             className="relative text-sm font-medium text-muted transition-colors hover:text-ink"
           >
             Friends
-            {requestCount > 0 && (
-              <span className="absolute -right-3 -top-2 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-ink px-1 text-[10px] font-bold leading-none text-white">
-                {requestCount > 99 ? '99+' : requestCount}
-              </span>
-            )}
           </Link>
           {user && (
             <div className="relative" ref={menuRef}>

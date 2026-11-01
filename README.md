@@ -169,9 +169,7 @@ This is a heuristic, not an optimum: finding the true minimum number of transact
 | POST/GET | /api/group-invitations | Invite by ID / list my pending invites |
 | POST | /api/group-invitations/{id}/accept | Accept group invite |
 | POST | /api/group-invitations/{id}/decline | Decline group invite |
-| POST/GET | /api/friends/requests | Send / list friend requests |
-| POST | /api/friends/requests/{id}/accept | Accept friend request |
-| POST | /api/friends/requests/{id}/decline | Decline friend request |
+| POST | /api/friends/requests | Add a friend by ID (no approval needed) |
 | GET | /api/friends | List friends with net balances |
 | DELETE | /api/friends/{id} | Remove friend |
 | POST | /api/friends/{id}/settle | Settle up with a friend |
