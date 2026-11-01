@@ -10,17 +10,14 @@ import { isValidHandle, normalizeHandle } from '../lib/handle';
 import useAuthStore from '../store/authStore';
 
 export default function FriendsPage() {
-  const { data: friendsData, error: friendsError } = useSWR('/friends');
-  const { data: requestsData, error: requestsError } = useSWR('/friends/requests');
+  const { data: friendsData, error: loadError } = useSWR('/friends');
   const [contact, setContact] = useState('');
   const { format } = useMoney();
   const myHandle = useAuthStore((s) => s.user?.handle);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const friends = friendsData ?? [];
-  const requests = requestsData ?? [];
-  const loadError = friendsError || requestsError;
-  const loading = !loadError && (!friendsData || !requestsData);
+  const loading = !loadError && !friendsData;
 
   const addFriend = async () => {
     setError('');
@@ -34,18 +31,9 @@ export default function FriendsPage() {
     try {
       await api.post('/friends/requests', { handle });
       setContact('');
-      setNotice('Request sent');
+      setNotice('Friend added');
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to send request');
-    }
-  };
-
-  const respond = async (id, action) => {
-    setError('');
-    try {
-      await api.post(`/friends/requests/${id}/${action}`);
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to update request');
+      setError(err.response?.data?.detail || 'Failed to add friend');
     }
   };
 
@@ -109,33 +97,6 @@ export default function FriendsPage() {
           </p>
         )}
       </div>
-
-      {requests.length > 0 && (
-        <div className="space-y-2">
-          <h2 className="text-lg font-medium text-ink">Requests</h2>
-          {requests.map((r) => (
-            <div
-              key={r.id}
-              className="card flex items-center justify-between p-4"
-            >
-              <span className="text-[15px] text-ink">
-                {r.requester_username || 'Someone'}
-              </span>
-              <div className="flex gap-2">
-                <Button variant="accent" onClick={() => respond(r.id, 'accept')}>
-                  Accept
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => respond(r.id, 'decline')}
-                >
-                  Decline
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
 
       <div className="space-y-2">
         <h2 className="text-lg font-medium text-ink">Your friends</h2>

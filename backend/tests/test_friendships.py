@@ -136,15 +136,15 @@ class FriendRequestApiTest(unittest.TestCase):
     def _auth(self, user):
         return {"Authorization": f"Bearer {create_access_token(user.id)}"}
 
-    def test_send_request_creates_pending(self):
+    def test_adding_by_id_makes_friends_without_approval(self):
         res = self.client.post(
             "/api/friends/requests",
             json={"handle": self.b.handle},
             headers=self._auth(self.a),
         )
-        self.assertEqual(res.status_code, 201)
+        b_friends = self.client.get("/api/friends", headers=self._auth(self.b)).json()
         self.assertEqual(
-            self.db.query(Friendship).count(), 1
+            (res.status_code, [f["id"] for f in b_friends]), (201, [self.a.id])
         )
 
     def test_cannot_friend_self(self):
@@ -155,7 +155,7 @@ class FriendRequestApiTest(unittest.TestCase):
         )
         self.assertEqual(res.status_code, 400)
 
-    def test_duplicate_request_rejected(self):
+    def test_adding_an_existing_friend_is_rejected(self):
         self.client.post(
             "/api/friends/requests",
             json={"handle": self.b.handle},
@@ -163,8 +163,8 @@ class FriendRequestApiTest(unittest.TestCase):
         )
         res = self.client.post(
             "/api/friends/requests",
-            json={"handle": self.b.handle},
-            headers=self._auth(self.a),
+            json={"handle": self.a.handle},
+            headers=self._auth(self.b),
         )
         self.assertEqual(res.status_code, 400)
 
@@ -175,55 +175,6 @@ class FriendRequestApiTest(unittest.TestCase):
             headers=self._auth(self.a),
         )
         self.assertEqual(res.status_code, 404)
-
-    def test_incoming_requests_and_accept(self):
-        self.client.post(
-            "/api/friends/requests",
-            json={"handle": self.b.handle},
-            headers=self._auth(self.a),
-        )
-        incoming = self.client.get(
-            "/api/friends/requests", headers=self._auth(self.b)
-        ).json()
-        self.assertEqual(len(incoming), 1)
-        fid = incoming[0]["id"]
-        res = self.client.post(
-            f"/api/friends/requests/{fid}/accept", headers=self._auth(self.b)
-        )
-        self.assertEqual(res.status_code, 204)
-        f = self.db.query(Friendship).one()
-        self.db.refresh(f)
-        self.assertEqual(f.status, FriendshipStatus.ACCEPTED)
-
-    def test_non_addressee_cannot_accept_or_decline(self):
-        res = self.client.post(
-            "/api/friends/requests",
-            json={"handle": self.b.handle},
-            headers=self._auth(self.a),
-        )
-        self.assertEqual(res.status_code, 201)
-        fid = res.json()["id"]
-        accept_res = self.client.post(
-            f"/api/friends/requests/{fid}/accept", headers=self._auth(self.a)
-        )
-        self.assertEqual(accept_res.status_code, 404)
-        decline_res = self.client.post(
-            f"/api/friends/requests/{fid}/decline", headers=self._auth(self.a)
-        )
-        self.assertEqual(decline_res.status_code, 404)
-
-    def test_decline_deletes_request(self):
-        res = self.client.post(
-            "/api/friends/requests",
-            json={"handle": self.b.handle},
-            headers=self._auth(self.a),
-        )
-        fid = res.json()["id"]
-        res = self.client.post(
-            f"/api/friends/requests/{fid}/decline", headers=self._auth(self.b)
-        )
-        self.assertEqual(res.status_code, 204)
-        self.assertEqual(self.db.query(Friendship).count(), 0)
 
 
 class FriendListApiTest(unittest.TestCase):
