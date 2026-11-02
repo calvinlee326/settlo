@@ -17,7 +17,8 @@ Support: [ko-fi.com/chunchenglee](https://ko-fi.com/chunchenglee)
 - **Multi-currency** — enter expenses in USD, TWD, JPY, CNY, KRW, THB or EUR. Each expense locks in that day's exchange rate, balances settle exactly across currencies, yen and won split in whole units, and each user picks the currency totals are shown in (Settings → Show totals in).
 - **Invitations** — invite someone to a group by ID (a pending invite appears on their home screen), by sharing the group's invite link, or by adding an existing friend.
 - **Member management** — the creator can remove members and any member can leave a group; removal is blocked while that member still has expenses or settlements.
-- **Payment history** — settled groups are archived to a dedicated history page.
+- **Payment history** — settled groups are archived to a dedicated history page. The creator can reopen one to add or change expenses.
+- **Live updates** — when someone else adds or changes something, open screens refresh within about a second.
 - **PWA** — installable, mobile-first interface (on iPhone: open in Safari → **Share** → **Add to Home Screen**).
 - **Privacy policy** — public at `/privacy`, linked from the login page.
 
@@ -163,6 +164,7 @@ This is a heuristic, not an optimum: finding the true minimum number of transact
 | DELETE | /api/groups/{id}/expenses/{eid} | Delete expense |
 | GET | /api/groups/{id}/settlements/ | Calculate settlements |
 | POST | /api/groups/{id}/settlements/confirm | Archive the group (requires every balance settled) |
+| POST | /api/groups/{id}/settlements/reopen | Reopen an archived group (creator only) |
 | POST | /api/groups/{id}/settlements/{sid}/pay | Record one payment |
 | POST | /api/groups/{id}/settlements/{sid}/reverse | Undo a recorded payment |
 | GET | /api/groups/{id}/expenses/{eid}/history | Previous versions of an expense |
@@ -176,3 +178,4 @@ This is a heuristic, not an optimum: finding the true minimum number of transact
 | GET | /api/friends/{id}/expenses | Direct expenses with a friend |
 | POST | /api/direct-expenses | Create a direct expense |
 | DELETE | /api/direct-expenses/{id} | Delete a direct expense |
+| GET | /api/changes?seen={version} | Wait up to 20s for any write, then return the new version |

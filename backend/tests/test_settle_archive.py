@@ -140,6 +140,47 @@ class SettleArchiveTest(unittest.TestCase):
             confirm_settlement(g.id, current_user=a, db=self.db)
         self.assertEqual(ctx.exception.status_code, 400)
 
+    def _archived_group(self):
+        from app.routers.settlements import confirm_settlement
+
+        a, b, g = self._group()
+        self._expense(g, a, a, b, "10.00", "5.00", "5.00")
+        self._record_payments(g, a)
+        confirm_settlement(g.id, current_user=a, db=self.db)
+        return a, b, g
+
+    def test_reopened_group_takes_new_expenses(self):
+        from app.routers.expenses import create_expense
+        from app.routers.settlements import reopen_group
+        from app.schemas.expense import ExpenseCreate
+
+        a, b, g = self._archived_group()
+        reopen_group(g.id, current_user=a, db=self.db)
+
+        body = ExpenseCreate(
+            title="Late", amount=Decimal("4.00"), paid_by=a.id, split_type="EQUAL"
+        )
+        created = create_expense(g.id, body, current_user=a, db=self.db)
+        self.assertEqual(created.title, "Late")
+
+    def test_only_creator_can_reopen(self):
+        from fastapi import HTTPException
+        from app.routers.settlements import reopen_group
+
+        a, b, g = self._archived_group()
+        with self.assertRaises(HTTPException) as ctx:
+            reopen_group(g.id, current_user=b, db=self.db)
+        self.assertEqual(ctx.exception.status_code, 403)
+
+    def test_reopen_rejects_group_that_is_not_archived(self):
+        from fastapi import HTTPException
+        from app.routers.settlements import reopen_group
+
+        a, b, g = self._group()
+        with self.assertRaises(HTTPException) as ctx:
+            reopen_group(g.id, current_user=a, db=self.db)
+        self.assertEqual(ctx.exception.status_code, 400)
+
     def test_confirm_rejects_when_no_expenses(self):
         from fastapi import HTTPException
         from app.routers.settlements import confirm_settlement

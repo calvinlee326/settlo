@@ -108,6 +108,30 @@ api.interceptors.response.use(
 
 export const fetcher = (url) => api.get(url).then(({ data }) => data);
 
+const CHANGES_RETRY_MS = 5000;
+
+// Long poll: the server answers as soon as anyone writes (or after a while),
+// then this asks again. A new version means what is on screen may be stale, so
+// refetch it the same way as after our own writes.
+// ponytail: our own writes move the version too, so their screens refetch twice.
+export async function listenForChanges(signal) {
+  let seen;
+  while (!signal.aborted) {
+    try {
+      const { data } = await api.get('/changes', { params: { seen }, signal });
+      if (seen !== undefined && data.version !== seen) {
+        mutate((key) => key !== '/rates');
+      }
+      seen = data.version;
+    } catch {
+      if (signal.aborted) return;
+      // Offline, a deploy, or a proxy cut the wait short: ask again shortly.
+      // The version catches up on the next answer, so no change is missed.
+      await new Promise((resolve) => setTimeout(resolve, CHANGES_RETRY_MS));
+    }
+  }
+}
+
 // Never let one account's cached reads reach the next one on this tab.
 useAuthStore.subscribe((state, prev) => {
   if (state.user?.id !== prev.user?.id) {

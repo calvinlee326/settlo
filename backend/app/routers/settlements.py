@@ -186,6 +186,25 @@ def confirm_settlement(
     return get_settlements(group_id, current_user=current_user, db=db)
 
 
+@router.post("/reopen", status_code=status.HTTP_204_NO_CONTENT)
+def reopen_group(
+    group_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    group = get_group_or_404(db, group_id, lock=True)
+    require_membership(db, group_id, current_user.id)
+    if group.created_by != current_user.id:
+        raise HTTPException(status_code=403, detail="Only the group creator can reopen this group")
+    if group.settled_at is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Group is not archived"
+        )
+    group.settled_at = None
+    group.settled_by = None
+    db.commit()
+
+
 @router.post("/{settlement_id}/pay", response_model=SettlementOut)
 def mark_paid(
     group_id: str,

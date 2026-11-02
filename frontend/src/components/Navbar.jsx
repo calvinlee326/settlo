@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useSWR from 'swr';
-import api, { withSessionLock } from '../api/axios';
+import api, { listenForChanges, withSessionLock } from '../api/axios';
 import useAuthStore from '../store/authStore';
 
 export default function Navbar() {
@@ -11,10 +11,17 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
-  // Poll group invites so the badge updates when someone invites you.
-  // HomePage reads the same invites key, so it is fetched once.
-  const { data: invites } = useSWR(user ? '/group-invitations' : null, { refreshInterval: 30000 });
+  // HomePage reads the same invites key, so it is fetched once. Live updates
+  // below refetch it when someone invites you.
+  const { data: invites } = useSWR(user ? '/group-invitations' : null);
   const inviteCount = invites?.length ?? 0;
+  const userId = user?.id;
+  useEffect(() => {
+    if (!userId) return undefined;
+    const controller = new AbortController();
+    listenForChanges(controller.signal);
+    return () => controller.abort();
+  }, [userId]);
   // Warm the main lists on hover/touch of a nav link so the next screen opens from cache.
   const [warm, setWarm] = useState(false);
   useSWR(warm ? '/groups/' : null);

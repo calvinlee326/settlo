@@ -1,14 +1,31 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
+import ErrorMessage from './ErrorMessage';
 import SettlementItem from './SettlementItem';
 import { formatMoney, useMoney } from '../lib/currency';
 
 export default function PaymentHistoryItem({ group, canDelete, onDeleted }) {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const { format } = useMoney();
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [reopening, setReopening] = useState(false);
+  const [reopenError, setReopenError] = useState('');
+
+  const handleReopen = async () => {
+    setReopenError('');
+    setReopening(true);
+    try {
+      await api.post(`/groups/${group.id}/settlements/reopen`);
+      navigate(`/groups/${group.id}`);
+    } catch (err) {
+      setReopenError(err.response?.data?.detail || 'Failed to reopen group');
+      setReopening(false);
+    }
+  };
 
   const toggle = async () => {
     const next = !open;
@@ -113,13 +130,25 @@ export default function PaymentHistoryItem({ group, canDelete, onDeleted }) {
               )}
 
               {canDelete && (
-                <button
-                  onClick={handleDelete}
-                  disabled={deleting}
-                  className="text-[13px] font-medium text-ink transition-colors hover:underline disabled:opacity-40"
-                >
-                  {deleting ? 'Removing…' : 'Remove from history'}
-                </button>
+                <div className="space-y-2">
+                  <ErrorMessage message={reopenError} />
+                  <div className="flex gap-4">
+                    <button
+                      onClick={handleReopen}
+                      disabled={reopening || deleting}
+                      className="text-[13px] font-medium text-ink transition-colors hover:underline disabled:opacity-40"
+                    >
+                      {reopening ? 'Reopening…' : 'Reopen group'}
+                    </button>
+                    <button
+                      onClick={handleDelete}
+                      disabled={deleting || reopening}
+                      className="text-[13px] font-medium text-ink transition-colors hover:underline disabled:opacity-40"
+                    >
+                      {deleting ? 'Removing…' : 'Remove from history'}
+                    </button>
+                  </div>
+                </div>
               )}
             </>
           )}
