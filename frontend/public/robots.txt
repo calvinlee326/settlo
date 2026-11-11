@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://settlo-sooty.vercel.app/sitemap.xml
